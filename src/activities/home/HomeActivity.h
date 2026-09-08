@@ -28,6 +28,13 @@ class HomeActivity final : public Activity {
   int coverRectW = 0;
   int coverRectH = 0;
   std::vector<RecentBook> recentBooks;
+  struct BookProgress {
+    int currentPage = 0;
+    int totalPages = 0;
+    int percentage = 0;
+    bool valid = false;
+  };
+  BookProgress readingProgress;
   const HomeMenuItem initialMenuItem;
   const bool cleanInitialRefresh;
 
@@ -69,6 +76,7 @@ class HomeActivity final : public Activity {
   void freeCoverBuffer();     // Free the stored cover buffer
   void loadRecentBooks(int maxBooks);
   void loadRecentCovers(int coverHeight);
+  void loadReadingProgress();
 
  public:
   explicit HomeActivity(GfxRenderer& renderer, MappedInputManager& mappedInput,

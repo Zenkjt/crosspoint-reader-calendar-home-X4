@@ -11,7 +11,9 @@
 #include <Xtc.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <cstring>
+#include <string>
 #include <vector>
 
 #include "CrossPointSettings.h"
@@ -110,6 +112,63 @@ void HomeActivity::loadRecentCovers(int coverHeight) {
   recentsLoading = false;
 }
 
+void HomeActivity::loadReadingProgress() {
+  readingProgress = {};
+  if (recentBooks.empty()) return;
+
+  const RecentBook& book = recentBooks.front();
+
+  if (FsHelpers::hasEpubExtension(book.path)) {
+    Epub epub(book.path, "/.crosspoint");
+    epub.setupCacheDir();
+    HalFile file;
+    if (!Storage.openFileForRead("HOME", epub.getCachePath() + "/progress.bin", file)) return;
+
+    uint8_t data[6] = {};
+    const int size = file.read(data, sizeof(data));
+    if (size != 6 && size != 4) return;
+
+    const int spineIndex = data[0] | (data[1] << 8);
+    const int page = data[2] | (data[3] << 8);
+    const int pageCount = size == 6 ? (data[4] | (data[5] << 8)) : 0;
+    if (pageCount <= 0) return;
+
+    readingProgress.currentPage = std::min(page + 1, pageCount);
+    readingProgress.totalPages = pageCount;
+    readingProgress.percentage =
+        std::clamp(static_cast<int>((static_cast<uint64_t>(page + 1) * 100) / pageCount), 0, 100);
+
+    if (epub.load(false, true) && epub.getBookSize() > 0) {
+      const float chapterProgress = static_cast<float>(page) / static_cast<float>(pageCount);
+      readingProgress.percentage =
+          std::clamp(static_cast<int>(epub.calculateProgress(spineIndex, chapterProgress) * 100.0f + 0.5f), 0, 100);
+    }
+    readingProgress.valid = true;
+    return;
+  }
+
+  if (FsHelpers::hasXtcExtension(book.path)) {
+    Xtc xtc(book.path, "/.crosspoint");
+    if (!xtc.load()) return;
+    HalFile file;
+    if (!Storage.openFileForRead("HOME", xtc.getCachePath() + "/progress.bin", file)) return;
+
+    uint8_t data[4] = {};
+    if (file.read(data, sizeof(data)) != 4) return;
+
+    const uint32_t page = data[0] | (static_cast<uint32_t>(data[1]) << 8) |
+                          (static_cast<uint32_t>(data[2]) << 16) | (static_cast<uint32_t>(data[3]) << 24);
+    const uint32_t total = xtc.getPageCount();
+    if (total == 0) return;
+
+    const uint32_t clampedPage = std::min(page, total - 1);
+    readingProgress.currentPage = static_cast<int>(clampedPage + 1);
+    readingProgress.totalPages = static_cast<int>(total);
+    readingProgress.percentage = static_cast<int>(xtc.calculateProgress(clampedPage));
+    readingProgress.valid = true;
+  }
+}
+
 void HomeActivity::onEnter() {
   Activity::onEnter();
 
@@ -117,6 +176,7 @@ void HomeActivity::onEnter() {
 
   const auto& metrics = UITheme::getInstance().getMetrics();
   loadRecentBooks(metrics.homeRecentBooksCount);
+  loadReadingProgress();
 
   const auto base = static_cast<int>(recentBooks.size());
   selectorIndex = initialMenuItem == HomeMenuItem::NONE ? 0 : base + menuItemToIndex(initialMenuItem, hasOpdsServers);
@@ -252,15 +312,27 @@ void HomeActivity::loop() {
   const int menuTop = metrics.homeTopPadding + metrics.homeCoverTileHeight + metrics.homeMenuTopOffset;
   const int renderedMenuCount =
       menuCount - (metrics.homeContinueReadingInMenu ? 0 : static_cast<int>(recentBooks.size()));
-  int menuRow = -1;
-  // Row height from the theme, not the metrics table: RoundedRaff draws
-  // font-derived rows and the touch grid must match the visuals exactly.
-  const int menuRowHeight = GUI.getMenuRowHeight(renderer);
-  const auto menuTouch = mappedInput.rowTouch(menuRow, menuTop, menuRowHeight + metrics.menuSpacing, renderedMenuCount,
-                                              0, INT32_MAX, menuRowHeight);
+  int touchedMenuIndex = -1;
+  MappedInputManager::RowTouch menuTouch = MappedInputManager::RowTouch::None;
+  if (GUI.homeMenuIsHorizontal()) {
+    const int sidePadding = metrics.contentSidePadding;
+    const int gap = metrics.menuSpacing;
+    const int availableWidth = std::max(0, renderer.getScreenWidth() - sidePadding * 2);
+    const int buttonWidth =
+        renderedMenuCount > 0 ? std::max(1, (availableWidth - gap * (renderedMenuCount - 1)) / renderedMenuCount) : 1;
+    const int menuHeight = std::max(1, renderer.getScreenHeight() - menuTop - metrics.buttonHintsHeight);
+    const int buttonHeight = std::min(72, menuHeight);
+    const int menuY = menuTop + std::max(0, (menuHeight - buttonHeight) / 2);
+    menuTouch = mappedInput.colTouch(touchedMenuIndex, sidePadding, buttonWidth + gap, renderedMenuCount, menuY,
+                                     menuY + buttonHeight, buttonWidth);
+  } else {
+    const int menuRowHeight = GUI.getMenuRowHeight(renderer);
+    menuTouch = mappedInput.rowTouch(touchedMenuIndex, menuTop, menuRowHeight + metrics.menuSpacing, renderedMenuCount,
+                                     0, INT32_MAX, menuRowHeight);
+  }
   if (menuTouch != MappedInputManager::RowTouch::None) {
     const int touchedIndex =
-        metrics.homeContinueReadingInMenu ? menuRow : menuRow + static_cast<int>(recentBooks.size());
+        metrics.homeContinueReadingInMenu ? touchedMenuIndex : touchedMenuIndex + static_cast<int>(recentBooks.size());
     if (menuTouch == MappedInputManager::RowTouch::Down) {
       if (selectorIndex != touchedIndex) {
         selectorIndex = touchedIndex;
@@ -286,25 +358,11 @@ void HomeActivity::render(RenderLock&&) {
   renderer.clearScreen();
   bool bufferRestored = coverBufferStored && restoreCoverBuffer();
 
-  // Band spans topPadding..homeTopPadding: the cover tile starts at the fixed
-  // homeTopPadding, so the height must shrink by topPadding or the band (and a
-  // centered title, e.g. RoundedRaff's book title) sinks into the tile.
-  GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, metrics.homeTopPadding - metrics.topPadding},
-                 metrics.homeContinueReadingInMenu && !recentBooks.empty() ? recentBooks[0].title.c_str() : nullptr);
-
-  // Record the tile rect so storeCoverBuffer (called from the theme) knows
-  // which sub-region of the framebuffer to snapshot. ~16 KB in Portrait
-  // instead of the 48 KB full framebuffer the previous bind captured.
   coverRectX = 0;
   coverRectY = metrics.homeTopPadding;
   coverRectW = pageWidth;
   coverRectH = metrics.homeCoverTileHeight;
 
-  GUI.drawRecentBookCover(renderer, Rect{0, metrics.homeTopPadding, pageWidth, metrics.homeCoverTileHeight},
-                          recentBooks, selectorIndex, coverRendered, coverBufferStored, bufferRestored,
-                          std::bind(&HomeActivity::storeCoverBuffer, this));
-
-  // Build menu items dynamically
   std::vector<const char*> menuItems = {tr(STR_BROWSE_FILES), tr(STR_MENU_RECENT_BOOKS), tr(STR_FILE_TRANSFER),
                                         tr(STR_SETTINGS_TITLE)};
   std::vector<UIIcon> menuIcons = {Folder, Recent, Transfer, Settings};
@@ -313,29 +371,43 @@ void HomeActivity::render(RenderLock&&) {
     menuItems.insert(menuItems.begin() + 2, tr(STR_OPDS_BROWSER));
     menuIcons.insert(menuIcons.begin() + 2, Library);
   }
-
   if (metrics.homeContinueReadingInMenu && !recentBooks.empty()) {
-    // Insert Continue Reading at the top if enabled in theme
     menuItems.insert(menuItems.begin(), tr(STR_CONTINUE_READING));
     menuIcons.insert(menuIcons.begin(), Book);
   }
 
-  GUI.drawButtonMenu(
-      renderer,
-      Rect{0, metrics.homeTopPadding + metrics.homeCoverTileHeight + metrics.homeMenuTopOffset, pageWidth,
-           pageHeight - (metrics.headerHeight + metrics.homeTopPadding + metrics.verticalSpacing +
-                         metrics.homeMenuTopOffset + metrics.buttonHintsHeight)},
-      static_cast<int>(menuItems.size()),
-      metrics.homeContinueReadingInMenu ? selectorIndex : selectorIndex - recentBooks.size(),
-      [&menuItems](int index) { return std::string(menuItems[index]); },
-      [&menuIcons](int index) { return menuIcons[index]; });
+  const int menuCount = static_cast<int>(menuItems.size());
+  const Rect headerRect{0, metrics.topPadding, pageWidth, metrics.homeTopPadding - metrics.topPadding};
+  const Rect coverRect{0, metrics.homeTopPadding, pageWidth, metrics.homeCoverTileHeight};
+  const int menuTop = metrics.homeTopPadding + metrics.homeCoverTileHeight + metrics.homeMenuTopOffset;
+  const Rect menuRect{0, menuTop, pageWidth, std::max(0, pageHeight - menuTop - metrics.buttonHintsHeight)};
+
+  const std::function<std::string(int)> menuLabel = [&menuItems](int index) {
+    return (index >= 0 && index < static_cast<int>(menuItems.size())) ? std::string(menuItems[index]) : std::string{};
+  };
+  const std::function<UIIcon(int)> rowIcon = [&menuIcons](int index) {
+    return (index >= 0 && index < static_cast<int>(menuIcons.size())) ? menuIcons[index] : UIIcon::None;
+  };
+
+  HomeRenderContext home{
+      headerRect, coverRect, menuRect,
+      metrics.homeContinueReadingInMenu && !recentBooks.empty() ? recentBooks[0].title.c_str() : nullptr,
+      recentBooks,
+      selectorIndex,
+      metrics.homeContinueReadingInMenu ? selectorIndex : selectorIndex - static_cast<int>(recentBooks.size()),
+      menuCount, menuLabel, rowIcon,
+      coverRendered, coverBufferStored, bufferRestored,
+      std::bind(&HomeActivity::storeCoverBuffer, this),
+      readingProgress.valid, readingProgress.currentPage, readingProgress.totalPages, readingProgress.percentage,
+      "THÁNG 9", "4", "THỨ SÁU", "Âm lịch: 23 tháng 7"};
+
+  GUI.drawHome(renderer, home);
 
   const auto labels = mappedInput.mapLabels(recentBooks.empty() ? "" : tr(STR_RESUME), tr(STR_SELECT), tr(STR_DIR_UP),
-                                            tr(STR_DIR_DOWN));
+                                             tr(STR_DIR_DOWN));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   renderer.displayBuffer(cleanInitialRefresh && !firstRenderDone ? HalDisplay::HALF_REFRESH : HalDisplay::FAST_REFRESH);
-
   if (!firstRenderDone) {
     firstRenderDone = true;
     requestUpdate();
