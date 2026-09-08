@@ -38,10 +38,10 @@ constexpr ThemeMetrics values = {.batteryWidth = 15,
                                  .tabPillFullSlot = true,
                                  .scrollBarWidth = 4,
                                  .scrollBarRightOffset = 5,
-                                 .homeTopPadding = 55,
+                                 .homeTopPadding = 190,
                                  // Smaller cover tile so the home menu sits higher (fits 5 items without overlap).
-                                 .homeCoverHeight = 300,
-                                 .homeCoverTileHeight = 350,
+                                 .homeCoverHeight = 280,
+                                 .homeCoverTileHeight = 470,
                                  .homeRecentBooksCount = 1,
                                  .homeContinueReadingInMenu = true,
                                  .homeMenuTopOffset = 20,
@@ -90,6 +90,8 @@ class RoundedRaffTheme : public BaseTheme {
   void drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std::vector<RecentBook>& recentBooks,
                            int selectorIndex, bool& coverRendered, bool& coverBufferStored, bool& bufferRestored,
                            std::function<bool()> storeCoverBuffer) const override;
+  void drawHome(GfxRenderer& renderer, const HomeRenderContext& home) const override;
+  bool homeMenuIsHorizontal() const override { return true; }
   int getMenuRowHeight(const GfxRenderer& renderer) const override;
   void drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount, int selectedIndex,
                       const std::function<std::string(int index)>& buttonLabel,
