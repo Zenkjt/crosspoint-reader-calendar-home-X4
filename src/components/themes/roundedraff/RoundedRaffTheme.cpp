@@ -71,10 +71,11 @@ void drawCalendar(GfxRenderer& r, const HomeRenderContext& h) {
   // centering it in the main body of the calendar.
   drawCenteredInBox(r, UI_12_FONT_ID, x + 8, w - 16, y + 34,
                     h.calendarMonth ? h.calendarMonth : "THÁNG 9", true);
-  if (h.calendarDay && *h.calendarDay) {
-    drawCenteredInBox(r, NOTOSANS_18_FONT_ID, x + 8, w - 16, y + 112,
-                      h.calendarDay, true);
-  }
+  // Day is intentionally a placeholder at this stage.
+  // The final dynamic day will be rendered from digit bitmaps (0-9),
+  // so no new 28px font is required here yet.
+  drawCenteredInBox(r, NOTOSANS_18_FONT_ID, x + 8, w - 16, y + 112,
+                    "4", true);
 
   drawCenteredInBox(r, UI_12_FONT_ID, x + 8, w - 16, y + 194,
                     h.calendarWeekday ? h.calendarWeekday : "THỨ SÁU", true);
@@ -87,16 +88,23 @@ void drawOwner(GfxRenderer& r, int x, int y, int width) {
   constexpr const char* kPhone = "0843191075";
   constexpr const char* kEmail = "nhakhoaphuong@gmail.com";
 
+  // Owner is deliberately quiet: smaller regular text, not bold.
   constexpr int ownerFont = UI_10_FONT_ID;
   constexpr int ownerLineGap = 16;
-  const std::string name = r.truncatedText(ownerFont, kName, width, EpdFontFamily::BOLD);
-  const std::string phone = r.truncatedText(ownerFont, kPhone, width, EpdFontFamily::BOLD);
-  const std::string email = r.truncatedText(ownerFont, kEmail, width, EpdFontFamily::BOLD);
-  r.drawText(ownerFont, x, y, name.c_str(), true, EpdFontFamily::BOLD);
-  r.drawText(ownerFont, x, y + ownerLineGap, phone.c_str(), true, EpdFontFamily::BOLD);
-  r.drawText(ownerFont, x, y + ownerLineGap * 2, email.c_str(), true, EpdFontFamily::BOLD);
-}
 
+  const std::string name =
+      r.truncatedText(ownerFont, kName, width, EpdFontFamily::REGULAR);
+  const std::string phone =
+      r.truncatedText(ownerFont, kPhone, width, EpdFontFamily::REGULAR);
+  const std::string email =
+      r.truncatedText(ownerFont, kEmail, width, EpdFontFamily::REGULAR);
+
+  r.drawText(ownerFont, x, y, name.c_str(), true, EpdFontFamily::REGULAR);
+  r.drawText(ownerFont, x, y + ownerLineGap, phone.c_str(), true,
+             EpdFontFamily::REGULAR);
+  r.drawText(ownerFont, x, y + ownerLineGap * 2, email.c_str(), true,
+             EpdFontFamily::REGULAR);
+}
 void drawDemoCover(GfxRenderer& r, int x, int y, int w, int h) {
   r.fillRoundedRect(x, y, w, h, 14, Color::LightGray);
   r.drawRoundedRect(x, y, w, h, 2, 14, true);
@@ -118,14 +126,13 @@ void drawBookInfo(GfxRenderer& r, int infoX, int infoY, int infoW,
                   const char* title, const char* author,
                   bool progressValid, int percentage,
                   int currentPage, int totalPages) {
-  // Keep the existing body font size, but make the title explicitly bold.
-  // Long titles are allowed to use the vertical space naturally instead of
-  // being arbitrarily forced into two lines. Six lines fit before the
-  // progress block; the renderer still guarantees safe width per line.
+  // Book title: bold, same body font size, up to six visual lines.
+  // Each line is width-safe and truncated if necessary.
   constexpr int kTitleLines = 6;
   constexpr int kTitleLineGap = 20;
   constexpr int kAuthorGap = 8;
   constexpr int kProgressGap = 20;
+
   const auto titleLines = r.wrappedText(
       kInfoFont, title ? title : "", infoW, kTitleLines, EpdFontFamily::BOLD);
 
@@ -133,7 +140,8 @@ void drawBookInfo(GfxRenderer& r, int infoX, int infoY, int infoW,
   for (const auto& line : titleLines) {
     const std::string safe =
         r.truncatedText(kInfoFont, line.c_str(), infoW, EpdFontFamily::BOLD);
-    r.drawText(kInfoFont, infoX, cursorY, safe.c_str(), true, EpdFontFamily::BOLD);
+    r.drawText(kInfoFont, infoX, cursorY, safe.c_str(), true,
+               EpdFontFamily::BOLD);
     cursorY += kTitleLineGap;
   }
 
@@ -141,12 +149,14 @@ void drawBookInfo(GfxRenderer& r, int infoX, int infoY, int infoW,
     cursorY += kAuthorGap;
     const std::string safeAuthor =
         r.truncatedText(kInfoFont, author, infoW, EpdFontFamily::REGULAR);
-    r.drawText(kInfoFont, infoX, cursorY, safeAuthor.c_str(), true, EpdFontFamily::REGULAR);
+    r.drawText(kInfoFont, infoX, cursorY, safeAuthor.c_str(), true,
+               EpdFontFamily::REGULAR);
   }
 
-  // Moved down ~20 px to give long book titles more breathing room.
+  // Progress starts 20px lower than the original V6 position.
   const int progressY = infoY + 128;
-  r.drawText(kInfoFont, infoX, progressY, "Tiến trình đọc", true, EpdFontFamily::BOLD);
+  r.drawText(kInfoFont, infoX, progressY, "Tiến trình đọc", true,
+             EpdFontFamily::BOLD);
 
   if (!progressValid) return;
 
@@ -161,27 +171,32 @@ void drawBookInfo(GfxRenderer& r, int infoX, int infoY, int infoW,
   const std::string pctText = std::to_string(pct) + "%";
   const std::string pages =
       std::to_string(currentPage) + " / " + std::to_string(totalPages) + " trang";
-  const int pctWidth = r.getTextWidth(kInfoFont, pctText.c_str(), EpdFontFamily::BOLD);
-  const int pageWidth = r.getTextWidth(kInfoFont, pages.c_str(), EpdFontFamily::BOLD);
+  const int pctWidth =
+      r.getTextWidth(kInfoFont, pctText.c_str(), EpdFontFamily::BOLD);
+  const int pageWidth =
+      r.getTextWidth(kInfoFont, pages.c_str(), EpdFontFamily::BOLD);
 
   const int metricsY = barY + 22;
   const int pageX = infoX + infoW - pageWidth;
   const int minGap = 8;
   if (pageWidth > 0 && pageWidth + pctWidth + minGap <= infoW) {
-    r.drawText(kInfoFont, infoX, metricsY, pctText.c_str(), true, EpdFontFamily::BOLD);
-    r.drawText(kInfoFont, pageX, metricsY, pages.c_str(), true, EpdFontFamily::BOLD);
+    r.drawText(kInfoFont, infoX, metricsY, pctText.c_str(), true,
+               EpdFontFamily::BOLD);
+    r.drawText(kInfoFont, pageX, metricsY, pages.c_str(), true,
+               EpdFontFamily::BOLD);
   } else {
-    r.drawText(kInfoFont, infoX, metricsY, pctText.c_str(), true, EpdFontFamily::BOLD);
+    r.drawText(kInfoFont, infoX, metricsY, pctText.c_str(), true,
+               EpdFontFamily::BOLD);
     const int remainingWidth = std::max(1, infoW - pctWidth - minGap);
     const std::string safePages =
-        r.truncatedText(kInfoFont, pages.c_str(), remainingWidth, EpdFontFamily::BOLD);
+        r.truncatedText(kInfoFont, pages.c_str(), remainingWidth,
+                        EpdFontFamily::BOLD);
     const int safePageWidth =
         r.getTextWidth(kInfoFont, safePages.c_str(), EpdFontFamily::BOLD);
     r.drawText(kInfoFont, infoX + infoW - safePageWidth, metricsY,
                safePages.c_str(), true, EpdFontFamily::BOLD);
   }
 }
-
 void drawBookCard(GfxRenderer& r, const HomeRenderContext& h) {
   const int x = 20;
   const int y = 320;
