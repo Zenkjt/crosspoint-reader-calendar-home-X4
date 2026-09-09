@@ -48,6 +48,15 @@ void drawCentered(GfxRenderer& r, int fontId, int y, const char* text, bool bold
   r.drawText(fontId, (r.getScreenWidth() - width) / 2, y, text, true, style);
 }
 
+void drawCenteredInBox(GfxRenderer& r, int fontId, int x, int width, int y, const char* text,
+                      bool bold = false) {
+  if (!text || !*text) return;
+  const auto style = bold ? EpdFontFamily::BOLD : EpdFontFamily::REGULAR;
+  const int textWidth = r.getTextWidth(fontId, text, style);
+  const int drawX = x + std::max(0, (width - textWidth) / 2);
+  r.drawText(fontId, drawX, y, text, true, style);
+}
+
 void drawCalendar(GfxRenderer& r, const HomeRenderContext& h) {
   const int x = 20;
   const int y = 13;
@@ -81,16 +90,17 @@ void drawDemoCover(GfxRenderer& r, int x, int y, int w, int h) {
   r.fillRoundedRect(x, y, w, h, 14, Color::LightGray);
   r.drawRoundedRect(x, y, w, h, 2, 14, true);
 
-  drawCentered(r, kBodyFont, y + 30, "DOUGLAS", true);
-  drawCentered(r, kBodyFont, y + 53, "ADAMS", true);
+  drawCenteredInBox(r, kBodyFont, x, w, y + 30, "DOUGLAS", true);
+  drawCenteredInBox(r, kBodyFont, x, w, y + 53, "ADAMS", true);
 
   r.drawLine(x + 16, y + 74, x + w - 16, y + 74, 1, true);
-  drawCentered(r, kHeadingFont, y + 102, "THE", true);
-  drawCentered(r, kHeadingFont, y + 130, "HITCHHIKER'S", true);
-  drawCentered(r, kHeadingFont, y + 158, "GUIDE", true);
+  drawCenteredInBox(r, kBodyFont, x, w, y + 102, "THE", true);
+  drawCenteredInBox(r, kBodyFont, x, w, y + 128, "HITCHHIKER'S", true);
+  drawCenteredInBox(r, kBodyFont, x, w, y + 154, "GUIDE", true);
   r.drawLine(x + 24, y + h - 58, x + w - 24, y + h - 58, 1, true);
-  drawCentered(r, kSmallFont, y + h - 42, "TO THE GALAXY");
+  drawCenteredInBox(r, kSmallFont, x, w, y + h - 42, "TO THE GALAXY");
 }
+
 
 void drawBookCard(GfxRenderer& r, const HomeRenderContext& h) {
   const int x = 20;
@@ -100,11 +110,10 @@ void drawBookCard(GfxRenderer& r, const HomeRenderContext& h) {
 
   r.fillRoundedRect(x, y, w, height, kCardRadius, Color::White);
   r.drawRoundedRect(x, y, w, height, 2, kCardRadius, true);
-  // Two equal visual columns.
+
   const int dividerX = 240;
   r.drawLine(dividerX, y + 16, dividerX, y + height - 16, 1, true);
 
-  // Column headings.
   r.drawText(kHeadingFont, 34, y + 18, "ĐANG ĐỌC", true, EpdFontFamily::BOLD);
   r.drawText(kHeadingFont, 260, y + 18, "THÔNG TIN", true, EpdFontFamily::BOLD);
 
@@ -112,6 +121,9 @@ void drawBookCard(GfxRenderer& r, const HomeRenderContext& h) {
   const int coverY = y + 55;
   const int coverW = 175;
   const int coverH = 280;
+  const int infoX = 260;
+  const int infoW = 190;
+
   if (!h.recentBooks.empty()) {
     const RecentBook& book = h.recentBooks.front();
     bool hasCover = false;
@@ -132,65 +144,77 @@ void drawBookCard(GfxRenderer& r, const HomeRenderContext& h) {
     }
     if (!hasCover) drawDemoCover(r, coverX, coverY, coverW, coverH);
 
-    const int infoX = 260;
-    const int infoW = 190;
-    const auto titleLines = r.wrappedText(kHeadingFont, book.title.c_str(), infoW, 2, EpdFontFamily::BOLD);
+    // The information column is deliberately compact: title, author, progress,
+    // then owner details. All text is constrained to the 190 px column.
+    const auto titleLines = r.wrappedText(kBodyFont, book.title.c_str(), infoW, 2, EpdFontFamily::BOLD);
     int textY = y + 58;
     for (const auto& line : titleLines) {
-      r.drawText(kHeadingFont, infoX, textY, line.c_str(), true, EpdFontFamily::BOLD);
-      textY += r.getLineHeight(kHeadingFont);
+      const std::string safeLine = r.truncatedText(kBodyFont, line.c_str(), infoW);
+      r.drawText(kBodyFont, infoX, textY, safeLine.c_str(), true, EpdFontFamily::BOLD);
+      textY += r.getLineHeight(kBodyFont);
     }
     if (!book.author.empty()) {
-      textY += 3;
-      const std::string author = r.truncatedText(kBodyFont, book.author.c_str(), infoW);
-      r.drawText(kBodyFont, infoX, textY, author.c_str(), true);
+      textY += 2;
+      const std::string author = r.truncatedText(kSmallFont, book.author.c_str(), infoW);
+      r.drawText(kSmallFont, infoX, textY, author.c_str(), true);
     }
 
-    textY = y + 170;
-    r.drawText(kBodyFont, infoX, textY, "Tiến trình đọc", true, EpdFontFamily::BOLD);
+    const int progressY = y + 155;
+    r.drawText(kBodyFont, infoX, progressY, "Tiến trình đọc", true, EpdFontFamily::BOLD);
     if (h.readingProgressValid) {
       const int pct = std::clamp(h.readingPercentage, 0, 100);
-      const int barY = textY + 25;
+      const int barY = progressY + 25;
       const int barW = infoW;
       const int barH = 10;
       r.drawRoundedRect(infoX, barY, barW, barH, 1, 5, true);
       const int fillW = std::max(1, (barW - 2) * pct / 100);
       r.fillRoundedRect(infoX + 1, barY + 1, fillW, barH - 2, 1, Color::Black);
+
       const std::string pctText = std::to_string(pct) + "%";
       r.drawText(kBodyFont, infoX, barY + 23, pctText.c_str(), true, EpdFontFamily::BOLD);
-
-      const std::string pages =
-          std::to_string(h.readingCurrentPage) + " / " + std::to_string(h.readingTotalPages) + " trang";
+      const std::string pages = std::to_string(h.readingCurrentPage) + " / " +
+                                std::to_string(h.readingTotalPages) + " trang";
       const int pageWidth = r.getTextWidth(kBodyFont, pages.c_str());
-      r.drawText(kBodyFont, infoX + infoW - pageWidth, barY + 23, pages.c_str(), true);
+      if (pageWidth <= infoW) {
+        r.drawText(kBodyFont, infoX + infoW - pageWidth, barY + 23, pages.c_str(), true);
+      }
     }
+
     r.drawLine(infoX, y + 350, infoX + infoW, y + 350, 1, true);
     drawOwner(r, infoX, y + 374, infoW);
     return;
   }
 
-  // Visual prototype fallback: always show a complete card even before a book
-  // is available. Real data wiring will replace this fallback later.
+  // UI-first fallback: a complete, deterministic Home composition for the
+  // simulator before real recent-book data is available.
   drawDemoCover(r, coverX, coverY, coverW, coverH);
-  const int infoX = 260;
-  const int infoW = 190;
-  r.drawText(kHeadingFont, infoX, y + 58, "The Hitchhiker's", true, EpdFontFamily::BOLD);
-  r.drawText(kHeadingFont, infoX, y + 82, "Guide to the Galaxy", true, EpdFontFamily::BOLD);
-  r.drawText(kBodyFont, infoX, y + 112, "Douglas Adams", true);
+  const auto titleLines = r.wrappedText(kBodyFont, "The Hitchhiker's Guide to the Galaxy", infoW, 2,
+                                        EpdFontFamily::BOLD);
+  int titleY = y + 58;
+  for (const auto& line : titleLines) {
+    const std::string safeLine = r.truncatedText(kBodyFont, line.c_str(), infoW);
+    r.drawText(kBodyFont, infoX, titleY, safeLine.c_str(), true, EpdFontFamily::BOLD);
+    titleY += r.getLineHeight(kBodyFont);
+  }
+  r.drawText(kSmallFont, infoX, y + 112, "Douglas Adams", true);
 
-  r.drawText(kBodyFont, infoX, y + 170, "Tiến trình đọc", true, EpdFontFamily::BOLD);
-  const int barY = y + 195;
+  const int progressY = y + 155;
+  r.drawText(kBodyFont, infoX, progressY, "Tiến trình đọc", true, EpdFontFamily::BOLD);
+  const int barY = progressY + 25;
   const int barW = infoW;
   const int barH = 10;
   const int pct = 62;
   r.drawRoundedRect(infoX, barY, barW, barH, 1, 5, true);
   r.fillRoundedRect(infoX + 1, barY + 1, (barW - 2) * pct / 100, barH - 2, 1, Color::Black);
   r.drawText(kBodyFont, infoX, barY + 23, "62%", true, EpdFontFamily::BOLD);
-  r.drawText(kBodyFont, infoX + 94, barY + 23, "173 / 278 trang", true);
+  const char* pages = "173 / 278 trang";
+  const int pageWidth = r.getTextWidth(kBodyFont, pages);
+  r.drawText(kBodyFont, infoX + infoW - pageWidth, barY + 23, pages, true);
 
   r.drawLine(infoX, y + 350, infoX + infoW, y + 350, 1, true);
   drawOwner(r, infoX, y + 374, infoW);
 }
+
 void drawHomeMenu(GfxRenderer& r, const HomeRenderContext& h) {
   const int side = 20;
   const int gap = 6;
