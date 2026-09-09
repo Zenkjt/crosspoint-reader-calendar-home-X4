@@ -317,7 +317,7 @@ void RoundedRaffTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1, 
   const int hintHeight = RoundedRaffMetrics::values.buttonHintsHeight - 8;
   const int groupWidth = (pageWidth - sidePadding * 2 - groupGap) / 2;
   const int hintY = pageHeight - hintHeight - bottomMargin;
-  const int textY = hintY + (hintHeight - renderer.getLineHeight(kGuideFont)) / 2;
+  const int textY = hintY + (hintHeight - renderer.getLineHeight(kGuideFontId)) / 2;
 
   const bool backDisabled = (btn1 == nullptr || btn1[0] == '\0');
   const int leftGroupX = sidePadding;
@@ -332,8 +332,8 @@ void RoundedRaffTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1, 
   renderer.drawRoundedRect(rightGroupX, hintY, groupWidth, hintHeight, 1, 14, true);
 
   constexpr int inner = 14;
-  const int selectWidth = renderer.getTextWidth(kGuideFont, selectText.c_str(), EpdFontFamily::REGULAR);
-  const int downWidth = renderer.getTextWidth(kGuideFont, downText.c_str(), EpdFontFamily::REGULAR);
+  const int selectWidth = renderer.getTextWidth(kGuideFontId, selectText.c_str(), EpdFontFamily::REGULAR);
+  const int downWidth = renderer.getTextWidth(kGuideFontId, downText.c_str(), EpdFontFamily::REGULAR);
 
   if (!backDisabled) {
     renderer.drawText(kGuideFont, leftGroupX + inner, textY, backLabel.c_str(), true, EpdFontFamily::REGULAR);
