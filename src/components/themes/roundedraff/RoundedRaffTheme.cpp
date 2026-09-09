@@ -66,15 +66,19 @@ void drawCalendar(GfxRenderer& r, const HomeRenderContext& h) {
   r.fillRoundedRect(x, y, w, height, kCalendarRadius, Color::White);
   r.drawRoundedRect(x, y, w, height, 2, kCalendarRadius, true);
 
-  drawCenteredInBox(r, NOTOSANS_18_FONT_ID, x + 8, w - 16, y + 30,
+  // The built-in font table tops out at NOTOSANS_18. Make the day the
+  // visual hero by giving it the largest/boldest calendar treatment and
+  // centering it in the main body of the calendar.
+  drawCenteredInBox(r, UI_12_FONT_ID, x + 8, w - 16, y + 34,
                     h.calendarMonth ? h.calendarMonth : "THÁNG 9", true);
   if (h.calendarDay && *h.calendarDay) {
-    drawCenteredInBox(r, NOTOSANS_18_FONT_ID, x + 8, w - 16, y + 85, h.calendarDay, true);
+    drawCenteredInBox(r, NOTOSANS_18_FONT_ID, x + 8, w - 16, y + 112,
+                      h.calendarDay, true);
   }
 
-  drawCenteredInBox(r, NOTOSANS_18_FONT_ID, x + 8, w - 16, y + 178,
+  drawCenteredInBox(r, UI_12_FONT_ID, x + 8, w - 16, y + 194,
                     h.calendarWeekday ? h.calendarWeekday : "THỨ SÁU", true);
-  drawCenteredInBox(r, NOTOSANS_12_FONT_ID, x + 8, w - 16, y + 222,
+  drawCenteredInBox(r, UI_10_FONT_ID, x + 8, w - 16, y + 226,
                     h.calendarLunar ? h.calendarLunar : "Âm lịch: 23 tháng 7");
 }
 
@@ -83,12 +87,14 @@ void drawOwner(GfxRenderer& r, int x, int y, int width) {
   constexpr const char* kPhone = "0843191075";
   constexpr const char* kEmail = "nhakhoaphuong@gmail.com";
 
-  const std::string name = r.truncatedText(kInfoFont, kName, width, EpdFontFamily::BOLD);
-  const std::string phone = r.truncatedText(kInfoFont, kPhone, width, EpdFontFamily::BOLD);
-  const std::string email = r.truncatedText(kInfoFont, kEmail, width, EpdFontFamily::BOLD);
-  r.drawText(kInfoFont, x, y, name.c_str(), true, EpdFontFamily::BOLD);
-  r.drawText(kInfoFont, x, y + 19, phone.c_str(), true, EpdFontFamily::BOLD);
-  r.drawText(kInfoFont, x, y + 38, email.c_str(), true, EpdFontFamily::BOLD);
+  constexpr int ownerFont = UI_10_FONT_ID;
+  constexpr int ownerLineGap = 16;
+  const std::string name = r.truncatedText(ownerFont, kName, width, EpdFontFamily::BOLD);
+  const std::string phone = r.truncatedText(ownerFont, kPhone, width, EpdFontFamily::BOLD);
+  const std::string email = r.truncatedText(ownerFont, kEmail, width, EpdFontFamily::BOLD);
+  r.drawText(ownerFont, x, y, name.c_str(), true, EpdFontFamily::BOLD);
+  r.drawText(ownerFont, x, y + ownerLineGap, phone.c_str(), true, EpdFontFamily::BOLD);
+  r.drawText(ownerFont, x, y + ownerLineGap * 2, email.c_str(), true, EpdFontFamily::BOLD);
 }
 
 void drawDemoCover(GfxRenderer& r, int x, int y, int w, int h) {
@@ -112,7 +118,11 @@ void drawBookInfo(GfxRenderer& r, int infoX, int infoY, int infoW,
                   const char* title, const char* author,
                   bool progressValid, int percentage,
                   int currentPage, int totalPages) {
-  constexpr int kTitleLines = 3;
+  // Keep the existing body font size, but make the title explicitly bold.
+  // Long titles are allowed to use the vertical space naturally instead of
+  // being arbitrarily forced into two lines. Six lines fit before the
+  // progress block; the renderer still guarantees safe width per line.
+  constexpr int kTitleLines = 6;
   constexpr int kTitleLineGap = 20;
   constexpr int kAuthorGap = 8;
   constexpr int kProgressGap = 20;
@@ -121,7 +131,8 @@ void drawBookInfo(GfxRenderer& r, int infoX, int infoY, int infoW,
 
   int cursorY = infoY;
   for (const auto& line : titleLines) {
-    const std::string safe = r.truncatedText(kInfoFont, line.c_str(), infoW, EpdFontFamily::BOLD);
+    const std::string safe =
+        r.truncatedText(kInfoFont, line.c_str(), infoW, EpdFontFamily::BOLD);
     r.drawText(kInfoFont, infoX, cursorY, safe.c_str(), true, EpdFontFamily::BOLD);
     cursorY += kTitleLineGap;
   }
@@ -133,7 +144,8 @@ void drawBookInfo(GfxRenderer& r, int infoX, int infoY, int infoW,
     r.drawText(kInfoFont, infoX, cursorY, safeAuthor.c_str(), true, EpdFontFamily::REGULAR);
   }
 
-  const int progressY = infoY + 108;
+  // Moved down ~20 px to give long book titles more breathing room.
+  const int progressY = infoY + 128;
   r.drawText(kInfoFont, infoX, progressY, "Tiến trình đọc", true, EpdFontFamily::BOLD);
 
   if (!progressValid) return;
