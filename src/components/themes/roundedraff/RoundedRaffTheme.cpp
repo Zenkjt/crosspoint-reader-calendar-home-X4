@@ -159,7 +159,7 @@ void drawBookCard(GfxRenderer& r, const HomeRenderContext& h) {
       r.drawText(kSmallFont, infoX, textY, author.c_str(), true);
     }
 
-    const int progressY = y + 155;
+    const int progressY = y + 168;
     r.drawText(kBodyFont, infoX, progressY, "Tiến trình đọc", true, EpdFontFamily::BOLD);
     if (h.readingProgressValid) {
       const int pct = std::clamp(h.readingPercentage, 0, 100);
@@ -198,7 +198,7 @@ void drawBookCard(GfxRenderer& r, const HomeRenderContext& h) {
   }
   r.drawText(kSmallFont, infoX, y + 112, "Douglas Adams", true);
 
-  const int progressY = y + 155;
+  const int progressY = y + 168;
   r.drawText(kBodyFont, infoX, progressY, "Tiến trình đọc", true, EpdFontFamily::BOLD);
   const int barY = progressY + 25;
   const int barW = infoW;
@@ -209,13 +209,19 @@ void drawBookCard(GfxRenderer& r, const HomeRenderContext& h) {
   r.drawText(kBodyFont, infoX, barY + 23, "62%", true, EpdFontFamily::BOLD);
   const char* pages = "173 / 278 trang";
   const int pageWidth = r.getTextWidth(kBodyFont, pages);
-  r.drawText(kBodyFont, infoX + infoW - pageWidth, barY + 23, pages, true);
+  if (pageWidth <= infoW) {
+    r.drawText(kBodyFont, infoX + infoW - pageWidth, barY + 23, pages, true);
+  }
 
   r.drawLine(infoX, y + 350, infoX + infoW, y + 350, 1, true);
   drawOwner(r, infoX, y + 374, infoW);
 }
 
 void drawHomeMenu(GfxRenderer& r, const HomeRenderContext& h) {
+  // Menu count is owned by HomeActivity. It is intentionally dynamic:
+  // Continue Reading exists only when a recent book exists, and OPDS only
+  // exists when an OPDS server is configured. No visual-only menu items are
+  // injected here because touch/navigation indices must remain identical.
   const int side = 20;
   const int gap = 6;
   const int top = 680;
