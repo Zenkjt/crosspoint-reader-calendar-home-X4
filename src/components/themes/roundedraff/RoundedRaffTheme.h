@@ -2,12 +2,11 @@
 #include "components/themes/BaseTheme.h"
 
 class GfxRenderer;
-
 namespace RoundedRaffMetrics {
 constexpr ThemeMetrics values = {
     .batteryWidth = 15,
     .batteryHeight = 12,
-    .topPadding = 13,
+    .topPadding = 10,
     .batteryBarHeight = 24,
     .headerHeight = 45,
     .verticalSpacing = 10,
@@ -36,19 +35,17 @@ constexpr ThemeMetrics values = {
     .tabPillFullSlot = true,
     .scrollBarWidth = 4,
     .scrollBarRightOffset = 5,
-
     // X4 portrait home geometry: 480 x 800.
-    // Calendar: 13..180
-    // Reading card: 190..660
-    // Menu: 680..760
-    // Button hints: 760..800
-    .homeTopPadding = 190,
-    .homeCoverHeight = 280,
-    .homeCoverTileHeight = 470,
+    // Calendar: 10..310 (300 px)
+    // Reading card: 320..680 (360 px)
+    // Menu: 690..760 (70 px)
+    // Button hints: 760..800 (40 px)
+    .homeTopPadding = 320,
+    .homeCoverHeight = 300,
+    .homeCoverTileHeight = 360,
     .homeRecentBooksCount = 1,
     .homeContinueReadingInMenu = true,
-    .homeMenuTopOffset = 20,
-
+    .homeMenuTopOffset = 10,
     .buttonHintsHeight = 40,
     .sideButtonHintsWidth = 30,
     .progressBarHeight = 16,
@@ -86,7 +83,6 @@ constexpr ThemeMetrics values = {
     .sheetRadius = 18,
     .capsuleRadius = 255};
 }  // namespace RoundedRaffMetrics
-
 class RoundedRaffTheme : public BaseTheme {
  public:
   void drawHeader(const GfxRenderer& renderer, Rect rect, const char* title,

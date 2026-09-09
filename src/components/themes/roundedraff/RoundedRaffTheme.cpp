@@ -9,7 +9,6 @@
 #include <algorithm>
 #include <string>
 #include <vector>
-
 #include "RecentBooksStore.h"
 #include "components/UITheme.h"
 #include "components/icons/book.h"
@@ -26,7 +25,6 @@ namespace {
 constexpr int kCalendarRadius = 16;
 constexpr int kCardRadius = 18;
 constexpr int kMenuRadius = 12;
-
 // CrossPoint font hierarchy: use UI_12 only for section headings.
 // Dense Home content uses SMALL_FONT_ID so every string can be measured
 // against its actual rendered width before drawing.
@@ -61,23 +59,22 @@ void drawCenteredInBox(GfxRenderer& r, int fontId, int x, int width, int y, cons
 
 void drawCalendar(GfxRenderer& r, const HomeRenderContext& h) {
   const int x = 20;
-  const int y = 13;
+  const int y = 10;
   const int w = r.getScreenWidth() - 40;
-  const int height = 167;
+  const int height = 300;
 
   r.fillRoundedRect(x, y, w, height, kCalendarRadius, Color::White);
   r.drawRoundedRect(x, y, w, height, 2, kCalendarRadius, true);
 
-  drawCenteredInBox(r, kHeadingFont, x + 8, w - 16, 26,
+  drawCenteredInBox(r, kHeadingFont, x + 8, w - 16, y + 30,
                     h.calendarMonth ? h.calendarMonth : "THÁNG 9", true);
-
   if (h.calendarDay && *h.calendarDay) {
-    drawCenteredInBox(r, NOTOSANS_18_FONT_ID, x + 8, w - 16, 55, h.calendarDay, true);
+    drawCenteredInBox(r, NOTOSANS_18_FONT_ID, x + 8, w - 16, y + 85, h.calendarDay, true);
   }
 
-  drawCenteredInBox(r, kHeadingFont, x + 8, w - 16, 114,
+  drawCenteredInBox(r, kHeadingFont, x + 8, w - 16, y + 178,
                     h.calendarWeekday ? h.calendarWeekday : "THỨ SÁU", true);
-  drawCenteredInBox(r, kInfoFont, x + 8, w - 16, 145,
+  drawCenteredInBox(r, kInfoFont, x + 8, w - 16, y + 222,
                     h.calendarLunar ? h.calendarLunar : "Âm lịch: 23 tháng 7");
 }
 
@@ -89,7 +86,6 @@ void drawOwner(GfxRenderer& r, int x, int y, int width) {
   const std::string name = r.truncatedText(kInfoFont, kName, width, EpdFontFamily::BOLD);
   const std::string phone = r.truncatedText(kInfoFont, kPhone, width, EpdFontFamily::BOLD);
   const std::string email = r.truncatedText(kInfoFont, kEmail, width, EpdFontFamily::BOLD);
-
   r.drawText(kInfoFont, x, y, name.c_str(), true, EpdFontFamily::BOLD);
   r.drawText(kInfoFont, x, y + 19, phone.c_str(), true, EpdFontFamily::BOLD);
   r.drawText(kInfoFont, x, y + 38, email.c_str(), true, EpdFontFamily::BOLD);
@@ -98,14 +94,12 @@ void drawOwner(GfxRenderer& r, int x, int y, int width) {
 void drawDemoCover(GfxRenderer& r, int x, int y, int w, int h) {
   r.fillRoundedRect(x, y, w, h, 14, Color::LightGray);
   r.drawRoundedRect(x, y, w, h, 2, 14, true);
-
   // Every line is measured inside the cover width. Nothing is allowed to
   // escape into the information column.
   drawCenteredInBox(r, kInfoFont, x + 8, w - 16, y + 30, "DOUGLAS", true);
   drawCenteredInBox(r, kInfoFont, x + 8, w - 16, y + 50, "ADAMS", true);
 
   r.drawLine(x + 16, y + 72, x + w - 16, y + 72, 1, true);
-
   drawCenteredInBox(r, kInfoFont, x + 8, w - 16, y + 101, "THE", true);
   drawCenteredInBox(r, kInfoFont, x + 8, w - 16, y + 121, "HITCHHIKER'S", true);
   drawCenteredInBox(r, kInfoFont, x + 8, w - 16, y + 141, "GUIDE", true);
@@ -122,8 +116,6 @@ void drawBookInfo(GfxRenderer& r, int infoX, int infoY, int infoW,
   constexpr int kTitleLineGap = 18;
   constexpr int kAuthorGap = 6;
   constexpr int kProgressGap = 22;
-
-  // Title block: measured/wrapped using the exact font that is drawn.
   const auto titleLines = r.wrappedText(
       kInfoFont, title ? title : "", infoW, kTitleLines, EpdFontFamily::BOLD);
 
@@ -134,8 +126,6 @@ void drawBookInfo(GfxRenderer& r, int infoX, int infoY, int infoW,
     cursorY += kTitleLineGap;
   }
 
-  // Author always starts below the title block, never at a fixed coordinate
-  // that can collide with a two/three-line title.
   if (author && *author) {
     cursorY += kAuthorGap;
     const std::string safeAuthor =
@@ -143,7 +133,6 @@ void drawBookInfo(GfxRenderer& r, int infoX, int infoY, int infoW,
     r.drawText(kInfoFont, infoX, cursorY, safeAuthor.c_str(), true, EpdFontFamily::REGULAR);
   }
 
-  // Progress is a separate fixed block with enough clearance from title/author.
   const int progressY = infoY + 104;
   r.drawText(kInfoFont, infoX, progressY, "Tiến trình đọc", true, EpdFontFamily::BOLD);
 
@@ -153,7 +142,6 @@ void drawBookInfo(GfxRenderer& r, int infoX, int infoY, int infoW,
   const int barY = progressY + kProgressGap;
   const int barW = infoW;
   const int barH = 8;
-
   r.drawRoundedRect(infoX, barY, barW, barH, 1, 4, true);
   const int fillW = std::max(1, (barW - 2) * pct / 100);
   r.fillRoundedRect(infoX + 1, barY + 1, fillW, barH - 2, 1, Color::Black);
@@ -161,16 +149,12 @@ void drawBookInfo(GfxRenderer& r, int infoX, int infoY, int infoW,
   const std::string pctText = std::to_string(pct) + "%";
   const std::string pages =
       std::to_string(currentPage) + " / " + std::to_string(totalPages) + " trang";
-
   const int pctWidth = r.getTextWidth(kInfoFont, pctText.c_str(), EpdFontFamily::BOLD);
   const int pageWidth = r.getTextWidth(kInfoFont, pages.c_str(), EpdFontFamily::BOLD);
 
-  // Page count gets the right edge of the information rectangle.
-  // If both strings collide, page count is truncated to the remaining width.
   const int metricsY = barY + 20;
   const int pageX = infoX + infoW - pageWidth;
   const int minGap = 8;
-
   if (pageWidth > 0 && pageWidth + pctWidth + minGap <= infoW) {
     r.drawText(kInfoFont, infoX, metricsY, pctText.c_str(), true, EpdFontFamily::BOLD);
     r.drawText(kInfoFont, pageX, metricsY, pages.c_str(), true, EpdFontFamily::BOLD);
@@ -188,32 +172,29 @@ void drawBookInfo(GfxRenderer& r, int infoX, int infoY, int infoW,
 
 void drawBookCard(GfxRenderer& r, const HomeRenderContext& h) {
   const int x = 20;
-  const int y = 190;
+  const int y = 320;
   const int w = r.getScreenWidth() - 40;
-  const int height = 470;
+  const int height = 360;
 
   r.fillRoundedRect(x, y, w, height, kCardRadius, Color::White);
   r.drawRoundedRect(x, y, w, height, 2, kCardRadius, true);
 
-  const int dividerX = 240;
+  const int dividerX = 230;
   r.drawLine(dividerX, y + 16, dividerX, y + height - 16, 1, true);
-
   r.drawText(kHeadingFont, 34, y + 18, "ĐANG ĐỌC", true, EpdFontFamily::BOLD);
-  r.drawText(kHeadingFont, 258, y + 18, "THÔNG TIN", true, EpdFontFamily::BOLD);
+  r.drawText(kHeadingFont, 248, y + 18, "THÔNG TIN", true, EpdFontFamily::BOLD);
 
   const int coverX = 40;
   const int coverY = y + 55;
-  const int coverW = 175;
-  const int coverH = 280;
+  const int coverW = 155;
+  const int coverH = 300;
 
-  // Leave a real 18 px gutter between divider and information content.
-  const int infoX = 258;
-  const int infoW = 174;
+  const int infoX = 248;
+  const int infoW = 192;
 
   if (!h.recentBooks.empty()) {
     const RecentBook& book = h.recentBooks.front();
     bool hasCover = false;
-
     if (!book.coverBmpPath.empty()) {
       const std::string path = UITheme::getCoverThumbPath(book.coverBmpPath, coverH);
       HalFile file;
@@ -229,7 +210,6 @@ void drawBookCard(GfxRenderer& r, const HomeRenderContext& h) {
         file.close();
       }
     }
-
     if (!hasCover) drawDemoCover(r, coverX, coverY, coverW, coverH);
 
     drawBookInfo(r, infoX, y + 58, infoW,
@@ -237,26 +217,28 @@ void drawBookCard(GfxRenderer& r, const HomeRenderContext& h) {
                  h.readingProgressValid, h.readingPercentage,
                  h.readingCurrentPage, h.readingTotalPages);
 
-    r.drawLine(infoX, y + 350, infoX + infoW, y + 350, 1, true);
-    drawOwner(r, infoX, y + 374, infoW);
+    r.drawLine(infoX, y + 270, infoX + infoW, y + 270, 1, true);
+    drawOwner(r, infoX, y + 294, infoW);
     return;
   }
 
-  // Deterministic UI-first fallback for simulator.
   drawDemoCover(r, coverX, coverY, coverW, coverH);
   drawBookInfo(r, infoX, y + 58, infoW,
                "The Hitchhiker's Guide to the Galaxy", "Douglas Adams",
                true, 62, 173, 278);
 
-  r.drawLine(infoX, y + 350, infoX + infoW, y + 350, 1, true);
-  drawOwner(r, infoX, y + 374, infoW);
+  r.drawLine(infoX, y + 270, infoX + infoW, y + 270, 1, true);
+  drawOwner(r, infoX, y + 294, infoW);
 }
 
 void drawHomeMenu(GfxRenderer& r, const HomeRenderContext& h) {
-  const int side = 20;
-  const int gap = 6;
-  const int top = 680;
-  const int height = 72;
+  const auto& metrics = UITheme::getInstance().getMetrics();
+  const int side = metrics.contentSidePadding;
+  const int gap = metrics.menuSpacing;
+  const int top =
+      metrics.homeTopPadding + metrics.homeCoverTileHeight + metrics.homeMenuTopOffset;
+  const int height =
+      std::max(1, r.getScreenHeight() - top - metrics.buttonHintsHeight);
   const int count = std::max(1, h.menuCount);
   const int available = r.getScreenWidth() - side * 2;
   const int buttonW = std::max(1, (available - gap * (count - 1)) / count);
@@ -264,7 +246,6 @@ void drawHomeMenu(GfxRenderer& r, const HomeRenderContext& h) {
   for (int i = 0; i < h.menuCount; ++i) {
     const int bx = side + i * (buttonW + gap);
     const bool selected = h.selectorIndex == i;
-
     r.fillRoundedRect(bx, top, buttonW, height, kMenuRadius,
                       selected ? Color::Black : Color::White);
     r.drawRoundedRect(bx, top, buttonW, height, 1, kMenuRadius, true);
@@ -272,17 +253,15 @@ void drawHomeMenu(GfxRenderer& r, const HomeRenderContext& h) {
     const uint8_t* icon = iconBitmap(h.rowIcon(i));
     if (icon) {
       constexpr int iconSize = 20;
-      r.drawIcon(icon, bx + (buttonW - iconSize) / 2, top + 9, iconSize);
+      r.drawIcon(icon, bx + (buttonW - iconSize) / 2, top + 8, iconSize);
     }
-
     const std::string label = h.menuLabel(i);
     const int textWidth = buttonW - 6;
     const auto lines =
         r.wrappedText(kSmallFont, label.c_str(), textWidth, 2, EpdFontFamily::BOLD);
     const int lineHeight = r.getLineHeight(kSmallFont);
     const int textTop =
-        top + 37 - (static_cast<int>(lines.size()) - 1) * lineHeight / 2;
-
+        top + 36 - (static_cast<int>(lines.size()) - 1) * lineHeight / 2;
     for (int line = 0; line < static_cast<int>(lines.size()); ++line) {
       const std::string safe =
           r.truncatedText(kSmallFont, lines[line].c_str(), textWidth, EpdFontFamily::BOLD);
@@ -335,7 +314,6 @@ void RoundedRaffTheme::drawTextField(const GfxRenderer& renderer, Rect rect,
   const int lineHeight = renderer.getLineHeight(UI_12_FONT_ID);
   const int lineY = rect.y + rect.height + lineHeight + metrics.verticalSpacing;
   const int thickness = cursorMode ? 3 : 2;
-
   if (contentWidth > 0) {
     renderer.drawLine(rect.x + contentStartX, lineY,
                       rect.x + contentStartX + contentWidth - 1, lineY,
@@ -356,7 +334,6 @@ void RoundedRaffTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1,
 
   const auto origOrientation = renderer.getOrientation();
   renderer.setOrientation(GfxRenderer::Orientation::Portrait);
-
   const int pageWidth = renderer.getScreenWidth();
   const int pageHeight = renderer.getScreenHeight();
   const int sidePadding = 20;
@@ -367,7 +344,6 @@ void RoundedRaffTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1,
   const int hintY = pageHeight - hintHeight - bottomMargin;
   const int textY =
       hintY + (hintHeight - renderer.getLineHeight(kGuideFontId)) / 2;
-
   const bool backDisabled = (btn1 == nullptr || btn1[0] == '\0');
   const int leftGroupX = sidePadding;
   const int rightGroupX = leftGroupX + groupWidth + groupGap;
@@ -379,24 +355,17 @@ void RoundedRaffTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1,
       (btn3 && btn3[0] != '\0') ? std::string(btn3) : "";
   const std::string downText =
       (btn4 && btn4[0] != '\0') ? std::string(btn4) : "";
-
   renderer.drawRoundedRect(leftGroupX, hintY, groupWidth, hintHeight, 1, 14, true);
   renderer.drawRoundedRect(rightGroupX, hintY, groupWidth, hintHeight, 1, 14, true);
 
   constexpr int inner = 14;
-  const int selectWidth =
-      renderer.getTextWidth(kGuideFontId, selectText.c_str(), EpdFontFamily::REGULAR);
-  const int downWidth =
-      renderer.getTextWidth(kGuideFontId, downText.c_str(), EpdFontFamily::REGULAR);
-
   if (!backDisabled) {
     const std::string safeBack =
         renderer.truncatedText(kGuideFontId, backLabel.c_str(),
-                                groupWidth - inner * 2, EpdFontFamily::REGULAR);
+                               groupWidth - inner * 2, EpdFontFamily::REGULAR);
     renderer.drawText(kGuideFontId, leftGroupX + inner, textY,
                       safeBack.c_str(), true, EpdFontFamily::REGULAR);
   }
-
   const std::string safeSelect =
       renderer.truncatedText(kGuideFontId, selectText.c_str(),
                              groupWidth - inner * 2, EpdFontFamily::REGULAR);
@@ -404,13 +373,11 @@ void RoundedRaffTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1,
                         renderer.getTextWidth(kGuideFontId, safeSelect.c_str(),
                                               EpdFontFamily::REGULAR),
                     textY, safeSelect.c_str(), true, EpdFontFamily::REGULAR);
-
   const std::string safeUp =
       renderer.truncatedText(kGuideFontId, upText.c_str(),
                              groupWidth - inner * 2, EpdFontFamily::REGULAR);
   renderer.drawText(kGuideFontId, rightGroupX + inner, textY,
                     safeUp.c_str(), true, EpdFontFamily::REGULAR);
-
   const std::string safeDown =
       renderer.truncatedText(kGuideFontId, downText.c_str(),
                              groupWidth - inner * 2, EpdFontFamily::REGULAR);
