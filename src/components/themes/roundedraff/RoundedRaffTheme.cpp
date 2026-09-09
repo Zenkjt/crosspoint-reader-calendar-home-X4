@@ -28,10 +28,10 @@ constexpr int kMenuRadius = 12;
 // CrossPoint font hierarchy: use UI_12 only for section headings.
 // Dense Home content uses SMALL_FONT_ID so every string can be measured
 // against its actual rendered width before drawing.
-constexpr int kHeadingFont = NOTOSANS_18_FONT_ID;
-constexpr int kInfoFont = NOTOSANS_14_FONT_ID;
-constexpr int kSmallFont = UI_10_FONT_ID;
-constexpr int kGuideFontId = UI_10_FONT_ID;
+constexpr int kHeadingFont = UI_12_FONT_ID;
+constexpr int kInfoFont = SMALL_FONT_ID;
+constexpr int kSmallFont = SMALL_FONT_ID;
+constexpr int kGuideFontId = SMALL_FONT_ID;
 
 const uint8_t* iconBitmap(const UIIcon icon) {
   switch (icon) {
@@ -248,9 +248,13 @@ void drawHomeMenu(GfxRenderer& r, const HomeRenderContext& h) {
   for (int i = 0; i < h.menuCount; ++i) {
     const int bx = side + i * (buttonW + gap);
     const bool selected = h.selectorIndex == i;
-    r.fillRoundedRect(bx, top, buttonW, height, kMenuRadius,
-                      selected ? Color::Black : Color::White);
-    r.drawRoundedRect(bx, top, buttonW, height, 1, kMenuRadius, true);
+
+    // Icon-only menu: keep the background white for every item so the
+    // existing monochrome bitmap stays visible. Selection is indicated by
+    // a heavier rounded border instead of inverting the whole button.
+    r.fillRoundedRect(bx, top, buttonW, height, kMenuRadius, Color::White);
+    r.drawRoundedRect(bx, top, buttonW, height,
+                      selected ? 3 : 1, kMenuRadius, true);
 
     const uint8_t* icon = iconBitmap(h.rowIcon(i));
     if (icon) {
