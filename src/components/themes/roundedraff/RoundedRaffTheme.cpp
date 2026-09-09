@@ -28,10 +28,10 @@ constexpr int kMenuRadius = 12;
 // CrossPoint font hierarchy: use UI_12 only for section headings.
 // Dense Home content uses SMALL_FONT_ID so every string can be measured
 // against its actual rendered width before drawing.
-constexpr int kHeadingFont = UI_12_FONT_ID;
-constexpr int kInfoFont = SMALL_FONT_ID;
-constexpr int kSmallFont = SMALL_FONT_ID;
-constexpr int kGuideFontId = SMALL_FONT_ID;
+constexpr int kHeadingFont = NOTOSANS_18_FONT_ID;
+constexpr int kInfoFont = NOTOSANS_14_FONT_ID;
+constexpr int kSmallFont = UI_10_FONT_ID;
+constexpr int kGuideFontId = UI_10_FONT_ID;
 
 const uint8_t* iconBitmap(const UIIcon icon) {
   switch (icon) {
@@ -66,15 +66,15 @@ void drawCalendar(GfxRenderer& r, const HomeRenderContext& h) {
   r.fillRoundedRect(x, y, w, height, kCalendarRadius, Color::White);
   r.drawRoundedRect(x, y, w, height, 2, kCalendarRadius, true);
 
-  drawCenteredInBox(r, kHeadingFont, x + 8, w - 16, y + 30,
+  drawCenteredInBox(r, NOTOSANS_18_FONT_ID, x + 8, w - 16, y + 30,
                     h.calendarMonth ? h.calendarMonth : "THÁNG 9", true);
   if (h.calendarDay && *h.calendarDay) {
     drawCenteredInBox(r, NOTOSANS_18_FONT_ID, x + 8, w - 16, y + 85, h.calendarDay, true);
   }
 
-  drawCenteredInBox(r, kHeadingFont, x + 8, w - 16, y + 178,
+  drawCenteredInBox(r, NOTOSANS_18_FONT_ID, x + 8, w - 16, y + 178,
                     h.calendarWeekday ? h.calendarWeekday : "THỨ SÁU", true);
-  drawCenteredInBox(r, kInfoFont, x + 8, w - 16, y + 222,
+  drawCenteredInBox(r, NOTOSANS_12_FONT_ID, x + 8, w - 16, y + 222,
                     h.calendarLunar ? h.calendarLunar : "Âm lịch: 23 tháng 7");
 }
 
@@ -113,9 +113,9 @@ void drawBookInfo(GfxRenderer& r, int infoX, int infoY, int infoW,
                   bool progressValid, int percentage,
                   int currentPage, int totalPages) {
   constexpr int kTitleLines = 3;
-  constexpr int kTitleLineGap = 18;
-  constexpr int kAuthorGap = 6;
-  constexpr int kProgressGap = 22;
+  constexpr int kTitleLineGap = 20;
+  constexpr int kAuthorGap = 8;
+  constexpr int kProgressGap = 20;
   const auto titleLines = r.wrappedText(
       kInfoFont, title ? title : "", infoW, kTitleLines, EpdFontFamily::BOLD);
 
@@ -133,7 +133,7 @@ void drawBookInfo(GfxRenderer& r, int infoX, int infoY, int infoW,
     r.drawText(kInfoFont, infoX, cursorY, safeAuthor.c_str(), true, EpdFontFamily::REGULAR);
   }
 
-  const int progressY = infoY + 104;
+  const int progressY = infoY + 108;
   r.drawText(kInfoFont, infoX, progressY, "Tiến trình đọc", true, EpdFontFamily::BOLD);
 
   if (!progressValid) return;
@@ -152,7 +152,7 @@ void drawBookInfo(GfxRenderer& r, int infoX, int infoY, int infoW,
   const int pctWidth = r.getTextWidth(kInfoFont, pctText.c_str(), EpdFontFamily::BOLD);
   const int pageWidth = r.getTextWidth(kInfoFont, pages.c_str(), EpdFontFamily::BOLD);
 
-  const int metricsY = barY + 20;
+  const int metricsY = barY + 22;
   const int pageX = infoX + infoW - pageWidth;
   const int minGap = 8;
   if (pageWidth > 0 && pageWidth + pctWidth + minGap <= infoW) {
@@ -231,6 +231,8 @@ void drawBookCard(GfxRenderer& r, const HomeRenderContext& h) {
   drawOwner(r, infoX, y + 294, infoW);
 }
 
+// RoundedRaff Home menu is intentionally icon-only. HomeActivity still owns the
+// dynamic menu model; this renderer only lays out 4/5/6 icons uniformly.
 void drawHomeMenu(GfxRenderer& r, const HomeRenderContext& h) {
   const auto& metrics = UITheme::getInstance().getMetrics();
   const int side = metrics.contentSidePadding;
@@ -252,23 +254,12 @@ void drawHomeMenu(GfxRenderer& r, const HomeRenderContext& h) {
 
     const uint8_t* icon = iconBitmap(h.rowIcon(i));
     if (icon) {
-      constexpr int iconSize = 20;
-      r.drawIcon(icon, bx + (buttonW - iconSize) / 2, top + 8, iconSize);
-    }
-    const std::string label = h.menuLabel(i);
-    const int textWidth = buttonW - 6;
-    const auto lines =
-        r.wrappedText(kSmallFont, label.c_str(), textWidth, 2, EpdFontFamily::BOLD);
-    const int lineHeight = r.getLineHeight(kSmallFont);
-    const int textTop =
-        top + 36 - (static_cast<int>(lines.size()) - 1) * lineHeight / 2;
-    for (int line = 0; line < static_cast<int>(lines.size()); ++line) {
-      const std::string safe =
-          r.truncatedText(kSmallFont, lines[line].c_str(), textWidth, EpdFontFamily::BOLD);
-      const int tw = r.getTextWidth(kSmallFont, safe.c_str(), EpdFontFamily::BOLD);
-      r.drawText(kSmallFont, bx + (buttonW - tw) / 2,
-                 textTop + line * lineHeight, safe.c_str(),
-                 !selected, EpdFontFamily::BOLD);
+      // Icon-only Home menu: keep the icon large and optically centered.
+      // The menu remains dynamic (4/5/6 buttons); only button width changes.
+      constexpr int iconSize = 30;
+      const int iconX = bx + (buttonW - iconSize) / 2;
+      const int iconY = top + (height - iconSize) / 2;
+      r.drawIcon(icon, iconX, iconY, iconSize);
     }
   }
 }
