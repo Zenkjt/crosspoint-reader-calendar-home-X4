@@ -5,7 +5,6 @@
 #include <HalGPIO.h>
 #include <HalStorage.h>
 #include <I18n.h>
-
 #include <algorithm>
 #include <string>
 #include <vector>
@@ -21,7 +20,6 @@
 #include "fontIds.h"
 
 namespace {
-
 constexpr int kCalendarRadius = 16;
 constexpr int kCardRadius = 18;
 constexpr int kMenuRadius = 12;
@@ -32,7 +30,6 @@ constexpr int kHeadingFont = UI_12_FONT_ID;
 constexpr int kInfoFont = SMALL_FONT_ID;
 constexpr int kSmallFont = SMALL_FONT_ID;
 constexpr int kGuideFontId = SMALL_FONT_ID;
-
 const uint8_t* iconBitmap(const UIIcon icon) {
   switch (icon) {
     case Folder: return FolderIcon;
@@ -44,7 +41,6 @@ const uint8_t* iconBitmap(const UIIcon icon) {
     default: return nullptr;
   }
 }
-
 // Draw text centered inside an explicit logical rectangle.
 // Never use screen-wide centering for text belonging to a sub-panel.
 void drawCenteredInBox(GfxRenderer& r, int fontId, int x, int width, int y, const char* text,
@@ -56,7 +52,6 @@ void drawCenteredInBox(GfxRenderer& r, int fontId, int x, int width, int y, cons
   const int drawX = x + std::max(0, (width - textWidth) / 2);
   r.drawText(fontId, drawX, y, safe.c_str(), true, style);
 }
-
 void drawCalendar(GfxRenderer& r, const HomeRenderContext& h) {
   const int x = 20;
   const int y = 10;
@@ -65,18 +60,13 @@ void drawCalendar(GfxRenderer& r, const HomeRenderContext& h) {
 
   r.fillRoundedRect(x, y, w, height, kCalendarRadius, Color::White);
   r.drawRoundedRect(x, y, w, height, 2, kCalendarRadius, true);
-
-  // The built-in font table tops out at NOTOSANS_18. Make the day the
-  // visual hero by giving it the largest/boldest calendar treatment and
-  // centering it in the main body of the calendar.
+  // The built-in font table tops out at NOTOSANS_18. The day is reserved
+  // as a visual placeholder here; the final dynamic day will be rendered
+  // from digit bitmaps (0-9) without introducing a larger font.
   drawCenteredInBox(r, UI_12_FONT_ID, x + 8, w - 16, y + 34,
                     h.calendarMonth ? h.calendarMonth : "THÁNG 9", true);
-  // Day is intentionally a placeholder at this stage.
-  // The final dynamic day will be rendered from digit bitmaps (0-9),
-  // so no new 28px font is required here yet.
-  drawCenteredInBox(r, NOTOSANS_18_FONT_ID, x + 8, w - 16, y + 112,
-                    "4", true);
-
+  // Day placeholder: intentionally draw nothing in this area.
+  // Future calendar digit bitmaps will be centered here.
   drawCenteredInBox(r, UI_12_FONT_ID, x + 8, w - 16, y + 194,
                     h.calendarWeekday ? h.calendarWeekday : "THỨ SÁU", true);
   drawCenteredInBox(r, UI_10_FONT_ID, x + 8, w - 16, y + 226,
@@ -87,10 +77,10 @@ void drawOwner(GfxRenderer& r, int x, int y, int width) {
   constexpr const char* kName = "Bs Phương";
   constexpr const char* kPhone = "0843191075";
   constexpr const char* kEmail = "nhakhoaphuong@gmail.com";
-
-  // Owner is deliberately quiet: smaller regular text, not bold.
-  constexpr int ownerFont = UI_10_FONT_ID;
-  constexpr int ownerLineGap = 16;
+  // Owner is deliberately quiet: one size smaller than UI_10,
+  // regular text, not bold.
+  constexpr int ownerFont = SMALL_FONT_ID;
+  constexpr int ownerLineGap = 14;
 
   const std::string name =
       r.truncatedText(ownerFont, kName, width, EpdFontFamily::REGULAR);
@@ -98,7 +88,6 @@ void drawOwner(GfxRenderer& r, int x, int y, int width) {
       r.truncatedText(ownerFont, kPhone, width, EpdFontFamily::REGULAR);
   const std::string email =
       r.truncatedText(ownerFont, kEmail, width, EpdFontFamily::REGULAR);
-
   r.drawText(ownerFont, x, y, name.c_str(), true, EpdFontFamily::REGULAR);
   r.drawText(ownerFont, x, y + ownerLineGap, phone.c_str(), true,
              EpdFontFamily::REGULAR);
@@ -112,7 +101,6 @@ void drawDemoCover(GfxRenderer& r, int x, int y, int w, int h) {
   // escape into the information column.
   drawCenteredInBox(r, kInfoFont, x + 8, w - 16, y + 30, "DOUGLAS", true);
   drawCenteredInBox(r, kInfoFont, x + 8, w - 16, y + 50, "ADAMS", true);
-
   r.drawLine(x + 16, y + 72, x + w - 16, y + 72, 1, true);
   drawCenteredInBox(r, kInfoFont, x + 8, w - 16, y + 101, "THE", true);
   drawCenteredInBox(r, kInfoFont, x + 8, w - 16, y + 121, "HITCHHIKER'S", true);
@@ -121,7 +109,6 @@ void drawDemoCover(GfxRenderer& r, int x, int y, int w, int h) {
   r.drawLine(x + 24, y + h - 58, x + w - 24, y + h - 58, 1, true);
   drawCenteredInBox(r, kSmallFont, x + 8, w - 16, y + h - 42, "TO THE GALAXY");
 }
-
 void drawBookInfo(GfxRenderer& r, int infoX, int infoY, int infoW,
                   const char* title, const char* author,
                   bool progressValid, int percentage,
@@ -132,7 +119,6 @@ void drawBookInfo(GfxRenderer& r, int infoX, int infoY, int infoW,
   constexpr int kTitleLineGap = 20;
   constexpr int kAuthorGap = 8;
   constexpr int kProgressGap = 20;
-
   const auto titleLines = r.wrappedText(
       kInfoFont, title ? title : "", infoW, kTitleLines, EpdFontFamily::BOLD);
 
@@ -144,7 +130,6 @@ void drawBookInfo(GfxRenderer& r, int infoX, int infoY, int infoW,
                EpdFontFamily::BOLD);
     cursorY += kTitleLineGap;
   }
-
   if (author && *author) {
     cursorY += kAuthorGap;
     const std::string safeAuthor =
@@ -159,7 +144,6 @@ void drawBookInfo(GfxRenderer& r, int infoX, int infoY, int infoW,
              EpdFontFamily::BOLD);
 
   if (!progressValid) return;
-
   const int pct = std::clamp(percentage, 0, 100);
   const int barY = progressY + kProgressGap;
   const int barW = infoW;
@@ -167,7 +151,6 @@ void drawBookInfo(GfxRenderer& r, int infoX, int infoY, int infoW,
   r.drawRoundedRect(infoX, barY, barW, barH, 1, 4, true);
   const int fillW = std::max(1, (barW - 2) * pct / 100);
   r.fillRoundedRect(infoX + 1, barY + 1, fillW, barH - 2, 1, Color::Black);
-
   const std::string pctText = std::to_string(pct) + "%";
   const std::string pages =
       std::to_string(currentPage) + " / " + std::to_string(totalPages) + " trang";
@@ -175,7 +158,6 @@ void drawBookInfo(GfxRenderer& r, int infoX, int infoY, int infoW,
       r.getTextWidth(kInfoFont, pctText.c_str(), EpdFontFamily::BOLD);
   const int pageWidth =
       r.getTextWidth(kInfoFont, pages.c_str(), EpdFontFamily::BOLD);
-
   const int metricsY = barY + 22;
   const int pageX = infoX + infoW - pageWidth;
   const int minGap = 8;
@@ -202,7 +184,6 @@ void drawBookCard(GfxRenderer& r, const HomeRenderContext& h) {
   const int y = 320;
   const int w = r.getScreenWidth() - 40;
   const int height = 360;
-
   r.fillRoundedRect(x, y, w, height, kCardRadius, Color::White);
   r.drawRoundedRect(x, y, w, height, 2, kCardRadius, true);
 
@@ -215,10 +196,8 @@ void drawBookCard(GfxRenderer& r, const HomeRenderContext& h) {
   const int coverY = y + 55;
   const int coverW = 155;
   const int coverH = 300;
-
   const int infoX = 248;
   const int infoW = 192;
-
   if (!h.recentBooks.empty()) {
     const RecentBook& book = h.recentBooks.front();
     bool hasCover = false;
@@ -238,7 +217,6 @@ void drawBookCard(GfxRenderer& r, const HomeRenderContext& h) {
       }
     }
     if (!hasCover) drawDemoCover(r, coverX, coverY, coverW, coverH);
-
     drawBookInfo(r, infoX, y + 58, infoW,
                  book.title.c_str(), book.author.c_str(),
                  h.readingProgressValid, h.readingPercentage,
@@ -248,7 +226,6 @@ void drawBookCard(GfxRenderer& r, const HomeRenderContext& h) {
     drawOwner(r, infoX, y + 294, infoW);
     return;
   }
-
   drawDemoCover(r, coverX, coverY, coverW, coverH);
   drawBookInfo(r, infoX, y + 58, infoW,
                "The Hitchhiker's Guide to the Galaxy", "Douglas Adams",
@@ -257,7 +234,6 @@ void drawBookCard(GfxRenderer& r, const HomeRenderContext& h) {
   r.drawLine(infoX, y + 270, infoX + infoW, y + 270, 1, true);
   drawOwner(r, infoX, y + 294, infoW);
 }
-
 // RoundedRaff Home menu is intentionally icon-only. HomeActivity still owns the
 // dynamic menu model; this renderer only lays out 4/5/6 icons uniformly.
 void drawHomeMenu(GfxRenderer& r, const HomeRenderContext& h) {
@@ -271,18 +247,15 @@ void drawHomeMenu(GfxRenderer& r, const HomeRenderContext& h) {
   const int count = std::max(1, h.menuCount);
   const int available = r.getScreenWidth() - side * 2;
   const int buttonW = std::max(1, (available - gap * (count - 1)) / count);
-
   for (int i = 0; i < h.menuCount; ++i) {
     const int bx = side + i * (buttonW + gap);
     const bool selected = h.selectorIndex == i;
-
     // Icon-only menu: keep the background white for every item so the
     // existing monochrome bitmap stays visible. Selection is indicated by
     // a heavier rounded border instead of inverting the whole button.
     r.fillRoundedRect(bx, top, buttonW, height, kMenuRadius, Color::White);
     r.drawRoundedRect(bx, top, buttonW, height,
                       selected ? 3 : 1, kMenuRadius, true);
-
     const uint8_t* icon = iconBitmap(h.rowIcon(i));
     if (icon) {
       // Icon-only Home menu: keep the icon large and optically centered.
@@ -307,7 +280,6 @@ void RoundedRaffTheme::drawHome(GfxRenderer& renderer, const HomeRenderContext& 
   drawBookCard(renderer, home);
   drawHomeMenu(renderer, home);
 }
-
 void RoundedRaffTheme::drawRecentBookCover(
     GfxRenderer& renderer, Rect rect, const std::vector<RecentBook>& recentBooks,
     const int selectorIndex, bool& coverRendered, bool& coverBufferStored,
@@ -316,7 +288,6 @@ void RoundedRaffTheme::drawRecentBookCover(
                                  coverRendered, coverBufferStored, bufferRestored,
                                  std::move(storeCoverBuffer));
 }
-
 int RoundedRaffTheme::getMenuRowHeight(const GfxRenderer& renderer) const {
   return renderer.getLineHeight(kHeadingFont) + 20;
 }
@@ -328,7 +299,6 @@ void RoundedRaffTheme::drawButtonMenu(
   BaseTheme::drawButtonMenu(renderer, rect, buttonCount, selectedIndex,
                             buttonLabel, rowIcon);
 }
-
 void RoundedRaffTheme::drawTextField(const GfxRenderer& renderer, Rect rect,
                                      const int textWidth, bool cursorMode,
                                      int contentStartX, int contentWidth) const {
@@ -342,7 +312,6 @@ void RoundedRaffTheme::drawTextField(const GfxRenderer& renderer, Rect rect,
                       thickness, true);
     return;
   }
-
   constexpr int hPadding = 8;
   const int lineW = textWidth + hPadding * 2;
   const int lineStart = rect.x + (rect.width - lineW) / 2;
@@ -353,7 +322,6 @@ void RoundedRaffTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1,
                                        const char* btn2, const char* btn3,
                                        const char* btn4) const {
   if (gpio.hasTouch()) return;
-
   const auto origOrientation = renderer.getOrientation();
   renderer.setOrientation(GfxRenderer::Orientation::Portrait);
   const int pageWidth = renderer.getScreenWidth();
@@ -369,7 +337,6 @@ void RoundedRaffTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1,
   const bool backDisabled = (btn1 == nullptr || btn1[0] == '\0');
   const int leftGroupX = sidePadding;
   const int rightGroupX = leftGroupX + groupWidth + groupGap;
-
   const std::string backLabel = backDisabled ? "" : std::string(btn1);
   const std::string selectText =
       (btn2 && btn2[0] != '\0') ? std::string(btn2) : "";
@@ -379,7 +346,6 @@ void RoundedRaffTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1,
       (btn4 && btn4[0] != '\0') ? std::string(btn4) : "";
   renderer.drawRoundedRect(leftGroupX, hintY, groupWidth, hintHeight, 1, 14, true);
   renderer.drawRoundedRect(rightGroupX, hintY, groupWidth, hintHeight, 1, 14, true);
-
   constexpr int inner = 14;
   if (!backDisabled) {
     const std::string safeBack =
@@ -407,6 +373,5 @@ void RoundedRaffTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1,
                         renderer.getTextWidth(kGuideFontId, safeDown.c_str(),
                                               EpdFontFamily::REGULAR),
                     textY, safeDown.c_str(), true, EpdFontFamily::REGULAR);
-
   renderer.setOrientation(origOrientation);
 }
