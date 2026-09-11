@@ -6,6 +6,7 @@
 #include <HalStorage.h>
 #include <I18n.h>
 #include <algorithm>
+#include <cstdlib>
 #include <string>
 #include <vector>
 #include "RecentBooksStore.h"
@@ -18,6 +19,7 @@
 #include "components/icons/settings2.h"
 #include "components/icons/transfer.h"
 #include "fontIds.h"
+#include "calendarDigits.h"
 
 namespace {
 constexpr int kCalendarRadius = 16;
@@ -60,23 +62,47 @@ void drawCalendar(GfxRenderer& r, const HomeRenderContext& h) {
 
   r.fillRoundedRect(x, y, w, height, kCalendarRadius, Color::White);
   r.drawRoundedRect(x, y, w, height, 2, kCalendarRadius, true);
-  // The built-in font table tops out at NOTOSANS_18. The day is reserved
-  // as a visual placeholder here; the final dynamic day will be rendered
-  // from digit bitmaps (0-9) without introducing a larger font.
   drawCenteredInBox(r, UI_12_FONT_ID, x + 8, w - 16, y + 34,
                     h.calendarMonth ? h.calendarMonth : "THÁNG 9", true);
-  // Day placeholder: intentionally draw nothing in this area.
-  // Future calendar digit bitmaps will be centered here.
+
+  // The solar day is the focal calendar element. Render it exclusively from
+  // the supplied 32x48 monochrome bitmap digits and center the complete group.
+  int dayValue = 1;
+  if (h.calendarDay && *h.calendarDay) dayValue = std::atoi(h.calendarDay);
+  dayValue = std::clamp(dayValue, 1, 31);
+  const int tens = dayValue / 10;
+  const int ones = dayValue % 10;
+  constexpr int digitW = 32;
+  constexpr int digitH = 48;
+  constexpr int digitGap = 4;
+  const int digitCount = dayValue >= 10 ? 2 : 1;
+  const int groupW = digitCount * digitW + (digitCount - 1) * digitGap;
+  const int groupX = x + (w - groupW) / 2;
+  const auto digitBitmap = [](int digit) -> const uint8_t* {
+    static const uint8_t* const digits[] = {
+        CalendarDayDigit0, CalendarDayDigit1, CalendarDayDigit2, CalendarDayDigit3, CalendarDayDigit4,
+        CalendarDayDigit5, CalendarDayDigit6, CalendarDayDigit7, CalendarDayDigit8, CalendarDayDigit9};
+    return digits[std::clamp(digit, 0, 9)];
+  };
+  const int dayY = y + 112;
+  if (digitCount == 1) {
+    r.drawImage(digitBitmap(ones), groupX, dayY, digitW, digitH);
+  } else {
+    r.drawImage(digitBitmap(tens), groupX, dayY, digitW, digitH);
+    r.drawImage(digitBitmap(ones), groupX + digitW + digitGap, dayY, digitW, digitH);
+  }
+
   drawCenteredInBox(r, UI_12_FONT_ID, x + 8, w - 16, y + 194,
                     h.calendarWeekday ? h.calendarWeekday : "THỨ SÁU", true);
   drawCenteredInBox(r, UI_10_FONT_ID, x + 8, w - 16, y + 226,
                     h.calendarLunar ? h.calendarLunar : "Âm lịch: 23 tháng 7");
 }
 
-void drawOwner(GfxRenderer& r, int x, int y, int width) {
-  constexpr const char* kName = "Bs Phương";
-  constexpr const char* kPhone = "0843191075";
-  constexpr const char* kEmail = "nhakhoaphuong@gmail.com";
+void drawOwner(GfxRenderer& r, int x, int y, int width,
+                const HomeRenderContext& h) {
+  const char* kName = h.ownerName && *h.ownerName ? h.ownerName : "";
+  const char* kPhone = h.ownerPhone && *h.ownerPhone ? h.ownerPhone : "";
+  const char* kEmail = h.ownerEmail && *h.ownerEmail ? h.ownerEmail : "";
   // Owner is deliberately quiet: one size smaller than UI_10,
   // regular text, not bold.
   constexpr int ownerFont = SMALL_FONT_ID;
@@ -223,7 +249,7 @@ void drawBookCard(GfxRenderer& r, const HomeRenderContext& h) {
                  h.readingCurrentPage, h.readingTotalPages);
 
     r.drawLine(infoX, y + 270, infoX + infoW, y + 270, 1, true);
-    drawOwner(r, infoX, y + 294, infoW);
+    drawOwner(r, infoX, y + 294, infoW, h);
     return;
   }
   drawDemoCover(r, coverX, coverY, coverW, coverH);
@@ -232,7 +258,7 @@ void drawBookCard(GfxRenderer& r, const HomeRenderContext& h) {
                true, 62, 173, 278);
 
   r.drawLine(infoX, y + 270, infoX + infoW, y + 270, 1, true);
-  drawOwner(r, infoX, y + 294, infoW);
+  drawOwner(r, infoX, y + 294, infoW, h);
 }
 // RoundedRaff Home menu is intentionally icon-only. HomeActivity still owns the
 // dynamic menu model; this renderer only lays out 4/5/6 icons uniformly.
@@ -276,6 +302,12 @@ void RoundedRaffTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const 
 }
 
 void RoundedRaffTheme::drawHome(GfxRenderer& renderer, const HomeRenderContext& home) const {
+  // RoundedRaff Home is designed specifically for the original X4 logical
+  // portrait framebuffer. Never apply its geometry to other panel sizes.
+  if (renderer.getScreenWidth() != 480 || renderer.getScreenHeight() != 800) {
+    BaseTheme::drawHome(renderer, home);
+    return;
+  }
   drawCalendar(renderer, home);
   drawBookCard(renderer, home);
   drawHomeMenu(renderer, home);
