@@ -75,6 +75,8 @@ void drawCalendar(GfxRenderer& r, const HomeRenderContext& h) {
   const int ones = dayValue % 10;
   constexpr int digitW = 90;
   constexpr int digitH = 110;
+  constexpr int bitmapW = 110;
+  constexpr int bitmapH = 90;
   constexpr int digitGap = 4;
   const int digitCount = dayValue >= 10 ? 2 : 1;
   const int groupW = digitCount * digitW + (digitCount - 1) * digitGap;
@@ -89,15 +91,17 @@ void drawCalendar(GfxRenderer& r, const HomeRenderContext& h) {
     return digits[std::clamp(digit, 0, 9)];
   };
 
-  // Large calendar day tile: 90x110 logical px, with the glyph occupying about 95 px vertically.
+  // Large calendar day tile: 90x110 logical px. The raw bitmap is 110x90 px because
+  // GfxRenderer maps the image origin for Portrait without rotating bitmap bits.
+  // This keeps the Inter Display Black glyph upright and about 95 px tall logically.
   // The tile is vertically centered between the month heading and weekday.
   const int dayY = y + 92;
   if (digitCount == 1) {
-    r.drawImage(digitBitmap(ones), groupX, dayY, digitW, digitH);
+    r.drawImage(digitBitmap(ones), groupX, dayY, bitmapW, bitmapH);
   } else {
-    r.drawImage(digitBitmap(tens), groupX, dayY, digitW, digitH);
+    r.drawImage(digitBitmap(tens), groupX, dayY, bitmapW, bitmapH);
     r.drawImage(digitBitmap(ones), groupX + digitW + digitGap, dayY,
-                digitW, digitH);
+                bitmapW, bitmapH);
   }
 
   drawCenteredInBox(r, UI_12_FONT_ID, x + 8, w - 16, y + 194,
