@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include "CalendarData.h"
 
 class CalendarService {
