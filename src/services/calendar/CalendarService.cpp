@@ -5,7 +5,7 @@
 #include <Logging.h>
 #include <WiFi.h>
 
-#include "HttpDownloader.h"
+#include "../../network/HttpDownloader.h"
 #include "WifiCredentialStore.h"
 #include <HalStorage.h>
 
