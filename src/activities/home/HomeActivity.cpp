@@ -21,6 +21,7 @@
 #include "MappedInputManager.h"
 #include "OpdsServerStore.h"
 #include "RecentBooksStore.h"
+#include "services/calendar/CalendarService.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
 
@@ -389,6 +390,13 @@ void HomeActivity::render(RenderLock&&) {
     return (index >= 0 && index < static_cast<int>(menuIcons.size())) ? menuIcons[index] : UIIcon::None;
   };
 
+  // Keep calendar display strings alive for the duration of the theme render.
+  const auto& calendar = CALENDAR_SERVICE.data();
+  const std::string calendarMonth = CALENDAR_SERVICE.monthText();
+  const std::string calendarDay = CALENDAR_SERVICE.dayText();
+  const std::string calendarWeekday = CALENDAR_SERVICE.weekdayText();
+  const std::string calendarLunar = CALENDAR_SERVICE.lunarText();
+
   HomeRenderContext home{
       headerRect, coverRect, menuRect,
       metrics.homeContinueReadingInMenu && !recentBooks.empty() ? recentBooks[0].title.c_str() : nullptr,
@@ -399,7 +407,8 @@ void HomeActivity::render(RenderLock&&) {
       coverRendered, coverBufferStored, bufferRestored,
       std::bind(&HomeActivity::storeCoverBuffer, this),
       readingProgress.valid, readingProgress.currentPage, readingProgress.totalPages, readingProgress.percentage,
-      "THÁNG 9", "4", "THỨ SÁU", "Âm lịch: 23 tháng 7"};
+      calendarMonth.c_str(), calendarDay.c_str(), calendarWeekday.c_str(), calendarLunar.c_str(),
+      calendar.ownerName.c_str(), calendar.ownerPhone.c_str(), calendar.ownerEmail.c_str()};
 
   GUI.drawHome(renderer, home);
 
