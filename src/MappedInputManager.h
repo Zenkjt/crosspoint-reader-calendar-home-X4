@@ -2,6 +2,8 @@
 
 #include <HalGPIO.h>
 
+#include "util/PowerButtonClickDetector.h"
+
 class GfxRenderer;
 namespace freeink {
 namespace ui {
@@ -47,6 +49,13 @@ class MappedInputManager {
 #endif
   bool wasPressed(Button button) const;
   bool wasReleased(Button button) const;
+  // X4-only centralized Power click classification. A finalized value of 2
+  // is consumed by the main loop as the calendar refresh gesture; a finalized
+  // value of 1 is exposed through wasReleased(Power) so existing single-click
+  // behavior remains intact.
+  uint8_t getPowerClickCount() const;
+  void clearPowerClickCount() const { powerClickDetector.clearFinalized(); }
+  void resetPowerClickDetector() { powerClickDetector.reset(); }
   // One-shot threshold event while the button is down; consumes its release.
   bool wasLongPressed(Button button, unsigned long thresholdMs) const;
   bool consumeSuppressedRelease() const;
@@ -145,6 +154,7 @@ class MappedInputManager {
   mutable unsigned long touchHeldOverrideAt = 0;
   mutable uint16_t longPressFiredButtons = 0;
   mutable uint16_t suppressedReleaseButtons = 0;
+  mutable PowerButtonClickDetector powerClickDetector;
 #if FREEINK_CAP_TOUCH
   bool powerConfirmClickFrame = false;
 #endif

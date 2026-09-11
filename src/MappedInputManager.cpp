@@ -15,6 +15,13 @@ namespace fui = freeink::ui;
 
 void MappedInputManager::update() const {
   gpio.update();
+  // Only the original X4 gets the generic multi-click Power classifier.
+  // X3 and X4 Pro retain their existing Power semantics.
+  if (gpio.deviceIsX4()) {
+    powerClickDetector.update(gpio.wasReleased(HalGPIO::BTN_POWER));
+  } else {
+    powerClickDetector.reset();
+  }
   for (uint8_t value = 0; value <= static_cast<uint8_t>(Button::ScreenDown); ++value) {
     if (!isPressed(static_cast<Button>(value))) longPressFiredButtons &= ~(1u << value);
   }
@@ -318,7 +325,14 @@ bool MappedInputManager::wasReleased(const Button button) const {
 #if FREEINK_CAP_TOUCH
   if (button == Button::Confirm && wasPowerConfirmClick()) return true;
 #endif
+  if (button == Button::Power && gpio.deviceIsX4()) {
+    return powerClickDetector.getClickCount() == 1;
+  }
   return mapButton(button, &HalGPIO::wasReleased);
+}
+
+uint8_t MappedInputManager::getPowerClickCount() const {
+  return gpio.deviceIsX4() ? powerClickDetector.getClickCount() : 0;
 }
 
 bool MappedInputManager::wasLongPressed(const Button button, const unsigned long thresholdMs) const {

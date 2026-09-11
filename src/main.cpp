@@ -31,6 +31,7 @@
 #include "MappedInputManager.h"
 #include "OpdsServerStore.h"
 #include "RecentBooksStore.h"
+#include "services/calendar/CalendarService.h"
 #include "SdCardFontSystem.h"
 #include "activities/Activity.h"
 #include "activities/ActivityManager.h"
@@ -407,6 +408,10 @@ void setup() {
 
   HalSystem::checkPanic();
 
+  // CalendarService only loads the last valid SD cache here. Network refresh is
+  // an explicit X4 Power double-click, so boot/sleep paths never wait on HTTPS.
+  CALENDAR_SERVICE.begin();
+
   APP_STATE.loadFromFile();
   const bool isSleepWake = wakeupReason == HalGPIO::WakeupReason::PowerButton;
   const bool isPersistedSleepWake = isSleepWake && !APP_STATE.showBootScreen;
@@ -647,6 +652,7 @@ void loop() {
   // a page turn, refresh, or other short power-button action.
   if (wakePowerReleasePending && !gpio.isPressed(HalGPIO::BTN_POWER)) {
     wakePowerReleasePending = false;
+    mappedInputManager.resetPowerClickDetector();
     return;
   }
 
@@ -668,10 +674,22 @@ void loop() {
     if (gpio.wasReleased(HalGPIO::BTN_POWER)) {
       screenshotButtonsReleased = true;
       screenshotComboActive = false;
+      mappedInputManager.resetPowerClickDetector();
       return;
     }
     screenshotButtonsReleased = true;
     screenshotComboActive = false;
+  }
+
+  // Original X4: a finalized Power double-click is an explicit calendar
+  // refresh. A single click remains delayed by the centralized detector until
+  // the 400ms click window closes, then follows the existing Power behavior.
+  if (mappedInputManager.getPowerClickCount() == 2) {
+    LOG_DBG("CAL", "Power double-click: refreshing calendar");
+    CALENDAR_SERVICE.refresh();
+    mappedInputManager.clearPowerClickCount();
+    activityManager.requestUpdate();
+    return;
   }
 
   // Consume the second X4 Pro power-button release so it does not also run a
