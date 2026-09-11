@@ -6,7 +6,6 @@
 #include <HalStorage.h>
 #include <I18n.h>
 #include <algorithm>
-#include <cstdlib>
 #include <string>
 #include <vector>
 #include "RecentBooksStore.h"
@@ -62,34 +61,43 @@ void drawCalendar(GfxRenderer& r, const HomeRenderContext& h) {
 
   r.fillRoundedRect(x, y, w, height, kCalendarRadius, Color::White);
   r.drawRoundedRect(x, y, w, height, 2, kCalendarRadius, true);
+
   drawCenteredInBox(r, UI_12_FONT_ID, x + 8, w - 16, y + 34,
                     h.calendarMonth ? h.calendarMonth : "THÁNG 9", true);
 
-  // The solar day is the focal calendar element. Render it exclusively from
-  // the supplied 32x48 monochrome bitmap digits and center the complete group.
+  // Solar day: logical tile 90x110. The bitmap contains an approximately
+  // 95px-high Inter Display Black glyph inside the 110px tile.
   int dayValue = 1;
   if (h.calendarDay && *h.calendarDay) dayValue = std::atoi(h.calendarDay);
   dayValue = std::clamp(dayValue, 1, 31);
+
   const int tens = dayValue / 10;
   const int ones = dayValue % 10;
-  constexpr int digitW = 32;
-  constexpr int digitH = 48;
+  constexpr int digitW = 90;
+  constexpr int digitH = 110;
   constexpr int digitGap = 4;
   const int digitCount = dayValue >= 10 ? 2 : 1;
   const int groupW = digitCount * digitW + (digitCount - 1) * digitGap;
   const int groupX = x + (w - groupW) / 2;
+
   const auto digitBitmap = [](int digit) -> const uint8_t* {
     static const uint8_t* const digits[] = {
-        CalendarDayDigit0, CalendarDayDigit1, CalendarDayDigit2, CalendarDayDigit3, CalendarDayDigit4,
-        CalendarDayDigit5, CalendarDayDigit6, CalendarDayDigit7, CalendarDayDigit8, CalendarDayDigit9};
+        CalendarDayDigit0, CalendarDayDigit1, CalendarDayDigit2,
+        CalendarDayDigit3, CalendarDayDigit4, CalendarDayDigit5,
+        CalendarDayDigit6, CalendarDayDigit7, CalendarDayDigit8,
+        CalendarDayDigit9};
     return digits[std::clamp(digit, 0, 9)];
   };
-  const int dayY = y + 112;
+
+  // Large calendar day tile: 90x110 logical px, with the glyph occupying about 95 px vertically.
+  // The tile is vertically centered between the month heading and weekday.
+  const int dayY = y + 92;
   if (digitCount == 1) {
     r.drawImage(digitBitmap(ones), groupX, dayY, digitW, digitH);
   } else {
     r.drawImage(digitBitmap(tens), groupX, dayY, digitW, digitH);
-    r.drawImage(digitBitmap(ones), groupX + digitW + digitGap, dayY, digitW, digitH);
+    r.drawImage(digitBitmap(ones), groupX + digitW + digitGap, dayY,
+                digitW, digitH);
   }
 
   drawCenteredInBox(r, UI_12_FONT_ID, x + 8, w - 16, y + 194,
@@ -103,6 +111,7 @@ void drawOwner(GfxRenderer& r, int x, int y, int width,
   const char* kName = h.ownerName && *h.ownerName ? h.ownerName : "";
   const char* kPhone = h.ownerPhone && *h.ownerPhone ? h.ownerPhone : "";
   const char* kEmail = h.ownerEmail && *h.ownerEmail ? h.ownerEmail : "";
+
   // Owner is deliberately quiet: one size smaller than UI_10,
   // regular text, not bold.
   constexpr int ownerFont = SMALL_FONT_ID;
@@ -114,12 +123,14 @@ void drawOwner(GfxRenderer& r, int x, int y, int width,
       r.truncatedText(ownerFont, kPhone, width, EpdFontFamily::REGULAR);
   const std::string email =
       r.truncatedText(ownerFont, kEmail, width, EpdFontFamily::REGULAR);
+
   r.drawText(ownerFont, x, y, name.c_str(), true, EpdFontFamily::REGULAR);
   r.drawText(ownerFont, x, y + ownerLineGap, phone.c_str(), true,
              EpdFontFamily::REGULAR);
   r.drawText(ownerFont, x, y + ownerLineGap * 2, email.c_str(), true,
              EpdFontFamily::REGULAR);
 }
+
 void drawDemoCover(GfxRenderer& r, int x, int y, int w, int h) {
   r.fillRoundedRect(x, y, w, h, 14, Color::LightGray);
   r.drawRoundedRect(x, y, w, h, 2, 14, true);
@@ -302,12 +313,13 @@ void RoundedRaffTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const 
 }
 
 void RoundedRaffTheme::drawHome(GfxRenderer& renderer, const HomeRenderContext& home) const {
-  // RoundedRaff Home is designed specifically for the original X4 logical
-  // portrait framebuffer. Never apply its geometry to other panel sizes.
+  // RoundedRaff Home is designed for the X4 logical portrait canvas.
+  // Keep the base renderer as a safe fallback for other simulator targets.
   if (renderer.getScreenWidth() != 480 || renderer.getScreenHeight() != 800) {
     BaseTheme::drawHome(renderer, home);
     return;
   }
+
   drawCalendar(renderer, home);
   drawBookCard(renderer, home);
   drawHomeMenu(renderer, home);
