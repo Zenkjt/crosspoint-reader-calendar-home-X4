@@ -35,6 +35,10 @@ class HttpDownloader {
    */
   static bool fetchUrl(const std::string& url, std::string& outContent, const std::string& username = "",
                        const std::string& password = "");
+  // Timeout-bounded text fetch for small control-plane requests. Existing
+  // callers retain the normal 60s timeout through the overload above.
+  static bool fetchUrl(const std::string& url, std::string& outContent, uint32_t timeoutMs,
+                       const std::string& username = "", const std::string& password = "");
 
   static bool fetchUrl(const std::string& url, Stream& stream, const std::string& username = "",
                        const std::string& password = "");

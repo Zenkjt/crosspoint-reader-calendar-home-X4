@@ -65,13 +65,14 @@ struct WifiPowerSaveGuard {
 
 #if defined(FREEINK_NET_WOLFSSL)
 HttpDownloader::DownloadError runGetWolf(const std::string& startUrl, const std::string& username,
-                                         const std::string& password, Sink& sink, bool downgradeRedirectsToHttp) {
+                                         const std::string& password, Sink& sink,
+                                         bool downgradeRedirectsToHttp, uint32_t timeoutMs) {
   WifiPowerSaveGuard psGuard;
   std::string url = startUrl;
 
   for (int hop = 0; hop <= MAX_REDIRECTS; ++hop) {
     freeink::SecureHttpClient http;
-    http.setTimeout(HTTP_TIMEOUT_MS);
+    http.setTimeout(timeoutMs);
     http.setInsecure();
     if (!http.begin(url)) {
       LOG_ERR("HTTP", "wolfSSL bad URL: %s", url.c_str());
@@ -142,13 +143,13 @@ HttpDownloader::DownloadError runGetWolf(const std::string& startUrl, const std:
 // that ends early as ESP_ERR_HTTP_INCOMPLETE_DATA, whereas the read loop streams
 // large/slow files and surfaces a short read directly.
 HttpDownloader::DownloadError runGet(const std::string& url, const std::string& username, const std::string& password,
-                                     Sink& sink) {
+                                     Sink& sink, uint32_t timeoutMs) {
   WifiPowerSaveGuard psGuard;
   esp_http_client_config_t config = {};
   config.url = url.c_str();
   config.buffer_size = HTTP_RX_BUF;
   config.buffer_size_tx = HTTP_TX_BUF;
-  config.timeout_ms = HTTP_TIMEOUT_MS;
+  config.timeout_ms = timeoutMs;
   // Verify HTTPS against the bundled CA roots. This build has esp-tls
   // CONFIG_ESP_TLS_INSECURE off, so an unverified TLS handshake can't be set
   // up at all; the model is public servers over verified https and local
@@ -249,14 +250,15 @@ HttpDownloader::DownloadError runGet(const std::string& url, const std::string& 
 // WiFiClient inside runGetWolf, so this is safe for non-TLS targets too.
 HttpDownloader::DownloadError runGetSecure(const std::string& url, const std::string& username,
                                            const std::string& password, Sink& sink,
-                                           bool downgradeRedirectsToHttp = false) {
+                                           bool downgradeRedirectsToHttp = false,
+                                           uint32_t timeoutMs = HTTP_TIMEOUT_MS) {
 #if defined(FREEINK_NET_WOLFSSL)
-  return runGetWolf(url, username, password, sink, downgradeRedirectsToHttp);
+  return runGetWolf(url, username, password, sink, downgradeRedirectsToHttp, timeoutMs);
 #else
   // esp_http_client follows redirects internally; the downgrade only exists on
   // the wolfSSL path, where the manual hop loop exposes the Location URL.
   (void)downgradeRedirectsToHttp;
-  return runGet(url, username, password, sink);
+  return runGet(url, username, password, sink, timeoutMs);
 #endif
 }
 }  // namespace
@@ -279,6 +281,18 @@ bool HttpDownloader::fetchUrl(const std::string& url, std::string& outContent, c
     return true;
   };
   return runGetSecure(url, username, password, sink) == OK;
+}
+
+bool HttpDownloader::fetchUrl(const std::string& url, std::string& outContent, uint32_t timeoutMs,
+                              const std::string& username, const std::string& password) {
+  LOG_DBG("HTTP", "Fetching with timeout %lums: %s", static_cast<unsigned long>(timeoutMs), url.c_str());
+  outContent.clear();
+  Sink sink;
+  sink.write = [&outContent](const uint8_t* data, size_t len) {
+    outContent.append(reinterpret_cast<const char*>(data), len);
+    return true;
+  };
+  return runGetSecure(url, username, password, sink, false, timeoutMs) == OK;
 }
 
 bool HttpDownloader::fetchUrl(const std::string& url, const DataCallback& onData, const std::string& username,
