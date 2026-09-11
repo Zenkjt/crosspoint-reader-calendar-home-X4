@@ -134,6 +134,9 @@ struct HomeRenderContext {
   const char* calendarDay = nullptr;
   const char* calendarWeekday = nullptr;
   const char* calendarLunar = nullptr;
+  const char* ownerName = nullptr;
+  const char* ownerPhone = nullptr;
+  const char* ownerEmail = nullptr;
 };
 
 namespace BaseMetrics {
