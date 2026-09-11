@@ -18,7 +18,7 @@
 #include "components/icons/settings2.h"
 #include "components/icons/transfer.h"
 #include "fontIds.h"
-#include "calendarDigits.h"
+#include "calendarDigits_RoundedRaff_Inter95_Logical.h"
 
 namespace {
 constexpr int kCalendarRadius = 16;
@@ -65,22 +65,27 @@ void drawCalendar(GfxRenderer& r, const HomeRenderContext& h) {
   drawCenteredInBox(r, UI_12_FONT_ID, x + 8, w - 16, y + 34,
                     h.calendarMonth ? h.calendarMonth : "THÁNG 9", true);
 
-  // Solar day: logical tile 90x110. The bitmap contains an approximately
-  // 95px-high Inter Display Black glyph inside the 110px tile.
+  // Solar day: keep the bitmap in LOGICAL PORTRAIT orientation.
+  // We deliberately do NOT use GfxRenderer::drawImage() here because that
+  // low-level path delegates raw bitmap interpretation to the panel driver,
+  // whose physical byte layout is not the same as our logical portrait bitmap.
+  // drawPixel() is unambiguous: each bitmap pixel is rendered in logical
+  // coordinates and GfxRenderer performs the Portrait coordinate mapping.
   int dayValue = 1;
   if (h.calendarDay && *h.calendarDay) dayValue = std::atoi(h.calendarDay);
   dayValue = std::clamp(dayValue, 1, 31);
 
   const int tens = dayValue / 10;
   const int ones = dayValue % 10;
-  constexpr int digitW = 90;
-  constexpr int digitH = 110;
-  constexpr int bitmapW = 110;
-  constexpr int bitmapH = 90;
+
+  constexpr int digitW = CalendarDayDigitWidth;   // 90 logical px
+  constexpr int digitH = CalendarDayDigitHeight;  // 110 logical px
   constexpr int digitGap = 4;
+
   const int digitCount = dayValue >= 10 ? 2 : 1;
   const int groupW = digitCount * digitW + (digitCount - 1) * digitGap;
   const int groupX = x + (w - groupW) / 2;
+  const int dayY = y + 92;
 
   const auto digitBitmap = [](int digit) -> const uint8_t* {
     static const uint8_t* const digits[] = {
@@ -91,22 +96,32 @@ void drawCalendar(GfxRenderer& r, const HomeRenderContext& h) {
     return digits[std::clamp(digit, 0, 9)];
   };
 
-  // Large calendar day tile: 90x110 logical px. The raw bitmap is 110x90 px because
-  // GfxRenderer maps the image origin for Portrait without rotating bitmap bits.
-  // This keeps the Inter Display Black glyph upright and about 95 px tall logically.
-  // The tile is vertically centered between the month heading and weekday.
-  const int dayY = y + 92;
+  const auto drawLogicalDigit =
+      [&r](const uint8_t* bitmap, int px, int py) {
+        constexpr int bytesPerRow = (CalendarDayDigitWidth + 7) / 8;
+
+        for (int yy = 0; yy < CalendarDayDigitHeight; ++yy) {
+          const uint8_t* row = bitmap + yy * bytesPerRow;
+          for (int xx = 0; xx < CalendarDayDigitWidth; ++xx) {
+            const uint8_t byte = row[xx >> 3];
+            const uint8_t mask = static_cast<uint8_t>(0x80u >> (xx & 7));
+            if (byte & mask) {
+              r.drawPixel(px + xx, py + yy, true);
+            }
+          }
+        }
+      };
+
   if (digitCount == 1) {
-    r.drawImage(digitBitmap(ones), groupX, dayY, bitmapW, bitmapH);
+    drawLogicalDigit(digitBitmap(ones), groupX, dayY);
   } else {
-    r.drawImage(digitBitmap(tens), groupX, dayY, bitmapW, bitmapH);
-    r.drawImage(digitBitmap(ones), groupX + digitW + digitGap, dayY,
-                bitmapW, bitmapH);
+    drawLogicalDigit(digitBitmap(tens), groupX, dayY);
+    drawLogicalDigit(digitBitmap(ones), groupX + digitW + digitGap, dayY);
   }
 
-  drawCenteredInBox(r, UI_12_FONT_ID, x + 8, w - 16, y + 194,
+  drawCenteredInBox(r, UI_12_FONT_ID, x + 8, w - 16, y + 210,
                     h.calendarWeekday ? h.calendarWeekday : "THỨ SÁU", true);
-  drawCenteredInBox(r, UI_10_FONT_ID, x + 8, w - 16, y + 226,
+  drawCenteredInBox(r, UI_10_FONT_ID, x + 8, w - 16, y + 242,
                     h.calendarLunar ? h.calendarLunar : "Âm lịch: 23 tháng 7");
 }
 
