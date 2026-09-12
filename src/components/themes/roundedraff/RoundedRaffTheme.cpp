@@ -513,9 +513,9 @@ void drawBookCard(GfxRenderer& r, const HomeRenderContext& h) {
   const int tileX = 28;
   const int tileY = y + 50;
   const int tileW = 194;
-  const int tileH = 295;
+  const int tileH = 310;
   const int coverW = 155;
-  const int coverH = 280;
+  const int coverH = 300;
   const int coverX = tileX + (tileW - coverW) / 2;
   const int coverY = tileY + (tileH - coverH) / 2;
   r.fillRoundedRect(tileX, tileY, tileW, tileH, 14, Color::LightGray);
@@ -533,7 +533,6 @@ void drawBookCard(GfxRenderer& r, const HomeRenderContext& h) {
           const int actualW = std::min(bitmap.getWidth(), coverW);
           const int cx = coverX + (coverW - actualW) / 2;
           r.drawBitmap(bitmap, cx, coverY, actualW, coverH);
-          r.maskRoundedRectOutsideCorners(cx, coverY, actualW, coverH, 14, Color::LightGray);
           hasCover = true;
         }
         file.close();
