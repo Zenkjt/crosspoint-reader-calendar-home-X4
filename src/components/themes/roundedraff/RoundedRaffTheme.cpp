@@ -143,11 +143,9 @@ void drawOwner(GfxRenderer& r, int x, int y, int width,
   const std::string email =
       r.truncatedText(ownerFont, kEmail, width, EpdFontFamily::REGULAR);
 
-  r.drawText(ownerFont, x, y, name.c_str(), true, EpdFontFamily::REGULAR);
-  r.drawText(ownerFont, x, y + ownerLineGap, phone.c_str(), true,
-             EpdFontFamily::REGULAR);
-  r.drawText(ownerFont, x, y + ownerLineGap * 2, email.c_str(), true,
-             EpdFontFamily::REGULAR);
+  drawCenteredInBox(r, ownerFont, x, width, y, name.c_str(), false);
+  drawCenteredInBox(r, ownerFont, x, width, y + ownerLineGap, phone.c_str(), false);
+  drawCenteredInBox(r, ownerFont, x, width, y + ownerLineGap * 2, email.c_str(), false);
 }
 
 void drawDemoCover(GfxRenderer& r, int x, int y, int w, int h) {
@@ -182,22 +180,19 @@ void drawBookInfo(GfxRenderer& r, int infoX, int infoY, int infoW,
   for (const auto& line : titleLines) {
     const std::string safe =
         r.truncatedText(kInfoFont, line.c_str(), infoW, EpdFontFamily::BOLD);
-    r.drawText(kInfoFont, infoX, cursorY, safe.c_str(), true,
-               EpdFontFamily::BOLD);
+    drawCenteredInBox(r, kInfoFont, infoX, infoW, cursorY, safe.c_str(), true);
     cursorY += kTitleLineGap;
   }
   if (author && *author) {
     cursorY += kAuthorGap;
     const std::string safeAuthor =
         r.truncatedText(kInfoFont, author, infoW, EpdFontFamily::REGULAR);
-    r.drawText(kInfoFont, infoX, cursorY, safeAuthor.c_str(), true,
-               EpdFontFamily::REGULAR);
+    drawCenteredInBox(r, kInfoFont, infoX, infoW, cursorY, safeAuthor.c_str(), false);
   }
 
   // Progress starts 20px lower than the original V6 position.
   const int progressY = infoY + 128;
-  r.drawText(kInfoFont, infoX, progressY, "Tiến trình đọc", true,
-             EpdFontFamily::BOLD);
+  drawCenteredInBox(r, kInfoFont, infoX, infoW, progressY, "Tiến trình đọc", true);
 
   if (!progressValid) return;
   const int pct = std::clamp(percentage, 0, 100);
@@ -218,12 +213,15 @@ void drawBookInfo(GfxRenderer& r, int infoX, int infoY, int infoW,
   const int pageX = infoX + infoW - pageWidth;
   const int minGap = 8;
   if (pageWidth > 0 && pageWidth + pctWidth + minGap <= infoW) {
-    r.drawText(kInfoFont, infoX, metricsY, pctText.c_str(), true,
+    const int metricsTotalW = pctWidth + minGap + pageWidth;
+    const int metricsX = infoX + std::max(0, (infoW - metricsTotalW) / 2);
+    r.drawText(kInfoFont, metricsX, metricsY, pctText.c_str(), true,
                EpdFontFamily::BOLD);
-    r.drawText(kInfoFont, pageX, metricsY, pages.c_str(), true,
+    r.drawText(kInfoFont, metricsX + pctWidth + minGap, metricsY, pages.c_str(), true,
                EpdFontFamily::BOLD);
   } else {
-    r.drawText(kInfoFont, infoX, metricsY, pctText.c_str(), true,
+    const int metricsX = infoX + std::max(0, (infoW - pctWidth - minGap) / 2);
+    r.drawText(kInfoFont, metricsX, metricsY, pctText.c_str(), true,
                EpdFontFamily::BOLD);
     const int remainingWidth = std::max(1, infoW - pctWidth - minGap);
     const std::string safePages =
@@ -243,17 +241,32 @@ void drawBookCard(GfxRenderer& r, const HomeRenderContext& h) {
   r.fillRoundedRect(x, y, w, height, kCardRadius, Color::White);
   r.drawRoundedRect(x, y, w, height, 2, kCardRadius, true);
 
+  // Keep the original two-column proportions. Only the section headings are
+  // centered; the information column content remains left-aligned.
   const int dividerX = 230;
   r.drawLine(dividerX, y + 16, dividerX, y + height - 16, 1, true);
-  r.drawText(kHeadingFont, 34, y + 18, "ĐANG ĐỌC", true, EpdFontFamily::BOLD);
-  r.drawText(kHeadingFont, 248, y + 18, "THÔNG TIN", true, EpdFontFamily::BOLD);
 
-  const int coverX = 40;
-  const int coverY = y + 55;
-  const int coverW = 155;
-  const int coverH = 300;
+  const int leftX = x + 8;
+  const int leftW = dividerX - leftX - 8;
   const int infoX = 248;
   const int infoW = 192;
+  drawCenteredInBox(r, kHeadingFont, leftX, leftW, y + 18, "ĐANG ĐỌC", true);
+  drawCenteredInBox(r, kHeadingFont, infoX, infoW, y + 18, "THÔNG TIN", true);
+
+  // The cover gets its own light-gray tile. The tile is centered in the
+  // available left-column area, and the actual book cover is centered both
+  // horizontally and vertically inside that tile.
+  const int coverAreaX = leftX + 2;
+  const int coverAreaW = leftW - 4;
+  const int coverAreaY = y + 50;
+  const int coverAreaH = 310;
+  const int coverW = 155;
+  const int coverH = 290;
+  const int coverX = coverAreaX + (coverAreaW - coverW) / 2;
+  const int coverY = coverAreaY + (coverAreaH - coverH) / 2;
+
+  r.fillRoundedRect(coverAreaX, coverAreaY, coverAreaW, coverAreaH, 14, Color::LightGray);
+
   if (!h.recentBooks.empty()) {
     const RecentBook& book = h.recentBooks.front();
     bool hasCover = false;
@@ -266,13 +279,14 @@ void drawBookCard(GfxRenderer& r, const HomeRenderContext& h) {
           const int actualW = std::min(bitmap.getWidth(), coverW);
           const int cx = coverX + (coverW - actualW) / 2;
           r.drawBitmap(bitmap, cx, coverY, actualW, coverH);
-          r.maskRoundedRectOutsideCorners(cx, coverY, actualW, coverH, 14, Color::White);
+          r.maskRoundedRectOutsideCorners(cx, coverY, actualW, coverH, 14, Color::LightGray);
           hasCover = true;
         }
         file.close();
       }
     }
     if (!hasCover) drawDemoCover(r, coverX, coverY, coverW, coverH);
+    // Keep all book information left-aligned as in the existing layout.
     drawBookInfo(r, infoX, y + 58, infoW,
                  book.title.c_str(), book.author.c_str(),
                  h.readingProgressValid, h.readingPercentage,
@@ -303,23 +317,36 @@ void drawHomeMenu(GfxRenderer& r, const HomeRenderContext& h) {
   const int count = std::max(1, h.menuCount);
   const int available = r.getScreenWidth() - side * 2;
   const int buttonW = std::max(1, (available - gap * (count - 1)) / count);
+
+  // RoundedRaff menu: icon + short label, matching the physical reference.
+  // HomeActivity still owns the actual menu model and translations; this
+  // renderer only decides the compact visual treatment.
+  constexpr int iconSize = 38;
+  constexpr int iconLabelGap = 5;
+  constexpr int labelFont = SMALL_FONT_ID;
+
   for (int i = 0; i < h.menuCount; ++i) {
     const int bx = side + i * (buttonW + gap);
     const bool selected = h.selectorIndex == i;
-    // Icon-only menu: keep the background white for every item so the
-    // existing monochrome bitmap stays visible. Selection is indicated by
-    // a heavier rounded border instead of inverting the whole button.
+
     r.fillRoundedRect(bx, top, buttonW, height, kMenuRadius, Color::White);
     r.drawRoundedRect(bx, top, buttonW, height,
                       selected ? 3 : 1, kMenuRadius, true);
+
     const uint8_t* icon = iconBitmap(h.rowIcon(i));
     if (icon) {
-      // Icon-only Home menu: keep the icon large and optically centered.
-      // The menu remains dynamic (4/5/6 buttons); only button width changes.
-      constexpr int iconSize = 30;
       const int iconX = bx + (buttonW - iconSize) / 2;
-      const int iconY = top + (height - iconSize) / 2;
+      const int iconY = top + 7;
       r.drawIcon(icon, iconX, iconY, iconSize);
+    }
+
+    if (h.menuLabel) {
+      const std::string label = h.menuLabel(i);
+      if (!label.empty()) {
+        const int labelY = top + 7 + iconSize + iconLabelGap;
+        drawCenteredInBox(r, labelFont, bx + 2, buttonW - 4,
+                          labelY, label.c_str(), false);
+      }
     }
   }
 }
