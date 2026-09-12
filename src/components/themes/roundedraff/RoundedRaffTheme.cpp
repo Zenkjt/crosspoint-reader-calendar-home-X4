@@ -32,6 +32,18 @@ constexpr int kInfoFont = SMALL_FONT_ID;
 constexpr int kSmallFont = SMALL_FONT_ID;
 constexpr int kGuideFontId = SMALL_FONT_ID;
 
+// Draw text centered inside an explicit logical rectangle.
+// Keep all panel-local text constrained to its own box.
+void drawCenteredInBox(GfxRenderer& r, int fontId, int x, int width, int y,
+                      const char* text, bool bold = false) {
+  if (!text || !*text || width <= 0) return;
+  const auto style = bold ? EpdFontFamily::BOLD : EpdFontFamily::REGULAR;
+  const std::string safe = r.truncatedText(fontId, text, width, style);
+  const int textWidth = r.getTextWidth(fontId, safe.c_str(), style);
+  const int drawX = x + std::max(0, (width - textWidth) / 2);
+  r.drawText(fontId, drawX, y, safe.c_str(), true, style);
+}
+
 void drawCalendar(GfxRenderer& r, const HomeRenderContext& h) {
   const int x = 20;
   const int y = 10;
