@@ -98,39 +98,69 @@ void CalendarService::setSafeDefault() {
 bool CalendarService::refresh() {
   std::string json;
 
-  // Prefer an already-connected session. If none exists, use the last saved
-  // credential and give the connection attempt a strict upper bound.
+  // Calendar refresh is an explicit, user-triggered network session.
+  // X4 normally keeps WiFi off to save power. If WiFi is already connected,
+  // reuse that session and leave ownership with the caller/system. Otherwise
+  // bring up STA mode using the last saved CrossPoint WiFi credential, perform
+  // the fetch, then shut WiFi down again before returning.
+  bool ownsWifiSession = false;
+
   if (WiFi.status() != WL_CONNECTED) {
     const std::string ssid = WIFI_STORE.getLastConnectedSsid();
     if (!ssid.empty()) {
       const auto credential = WIFI_STORE.findCredential(ssid);
       if (credential) {
+        ownsWifiSession = true;
+
         WiFi.persistent(false);
+        WiFi.disconnect(false);
         WiFi.mode(WIFI_STA);
         WiFi.begin(credential->ssid.c_str(), credential->password.c_str());
+
+        LOG_DBG("CAL", "WiFi enabled for calendar refresh: %s", credential->ssid.c_str());
 
         const unsigned long started = millis();
         while (WiFi.status() != WL_CONNECTED &&
                millis() - started < WIFI_CONNECT_TIMEOUT_MS) {
           delay(WIFI_POLL_INTERVAL_MS);
         }
+      } else {
+        LOG_DBG("CAL", "No saved credential for last WiFi SSID");
       }
+    } else {
+      LOG_DBG("CAL", "No saved WiFi SSID for calendar refresh");
     }
   }
 
   if (WiFi.status() != WL_CONNECTED) {
     LOG_DBG("CAL", "Calendar refresh skipped: WiFi unavailable");
+    if (ownsWifiSession) {
+      WiFi.disconnect(true);
+      WiFi.mode(WIFI_OFF);
+      LOG_DBG("CAL", "WiFi disabled after failed calendar connection");
+    }
     return false;
   }
 
-  if (!HttpDownloader::fetchUrl(URL, json, FETCH_TIMEOUT_MS)) {
+  const bool fetched = HttpDownloader::fetchUrl(URL, json, FETCH_TIMEOUT_MS);
+  if (!fetched) {
     LOG_ERR("CAL", "Calendar HTTPS fetch failed; keeping last valid data");
+    if (ownsWifiSession) {
+      WiFi.disconnect(true);
+      WiFi.mode(WIFI_OFF);
+      LOG_DBG("CAL", "WiFi disabled after failed calendar fetch");
+    }
     return false;
   }
 
   CalendarData parsed;
   if (!parseAndValidate(json, parsed)) {
     LOG_ERR("CAL", "Calendar server returned invalid data");
+    if (ownsWifiSession) {
+      WiFi.disconnect(true);
+      WiFi.mode(WIFI_OFF);
+      LOG_DBG("CAL", "WiFi disabled after invalid calendar response");
+    }
     return false;
   }
 
@@ -140,6 +170,13 @@ bool CalendarService::refresh() {
 
   current = std::move(parsed);
   LOG_INF("CAL", "Calendar refreshed: %s", current.date.c_str());
+
+  if (ownsWifiSession) {
+    WiFi.disconnect(true);
+    WiFi.mode(WIFI_OFF);
+    LOG_DBG("CAL", "WiFi disabled after successful calendar refresh");
+  }
+
   return true;
 }
 
