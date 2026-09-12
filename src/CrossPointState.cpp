@@ -88,7 +88,12 @@ bool CrossPointState::fromJson(JsonVariantConst doc) {
     if (legacy != UINT8_MAX) pushRecentSleep(static_cast<uint16_t>(legacy));
   }
   readerActivityLoadCount = doc["readerActivityLoadCount"] | static_cast<uint8_t>(0);
-  lastSleepFromReader = doc["lastSleepFromReader"] | false;
+
+  // X4newH boot policy: a normal power-on/wake always lands on Home.
+  // Keep the persisted field for compatibility and for explicit internal
+  // restart logic, but do not use it to auto-resume the reader at boot.
+  lastSleepFromReader = false;
+
   showBootScreen = doc["showBootScreen"] | true;
   return true;
 }
