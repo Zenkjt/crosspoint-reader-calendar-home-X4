@@ -37,6 +37,15 @@ For code changes:
 
 Do not ask the user to reconstruct code from snippets.
 
+## 4. Final-result-only communication
+The user wants minimal explanation and only the final result.
+
+- Do not present intermediate versions, drafts, experiments, rejected files, or alternative candidate files unless explicitly requested.
+- Do not make the user choose between multiple generated files.
+- Internally review/iterate as needed, then provide only the final replacement file or final file set.
+- Keep the explanation short: what to replace, exact repository path, and what to test/commit.
+- Consolidate related changes into one final coherent result whenever technically possible.
+
 ## 4. Scope discipline
 - Make the smallest change that satisfies the task.
 - Do not modify unrelated files.
