@@ -23,6 +23,15 @@ void CalendarService::begin() {
     setSafeDefault();
     LOG_DBG("CAL", "No valid calendar cache; using safe default");
   }
+
+  // WifiCredentialStore is normally loaded by WifiSelectionActivity. Home can
+  // refresh the calendar before that activity has ever opened, so explicitly
+  // load the persistent WiFi credentials here as well.
+  if (WIFI_STORE.loadFromFile()) {
+    LOG_DBG("CAL", "Loaded saved WiFi credentials for calendar refresh");
+  } else {
+    LOG_DBG("CAL", "No saved WiFi credential file for calendar refresh");
+  }
 }
 
 bool CalendarService::parseAndValidate(const std::string& json, CalendarData& out) const {
@@ -98,37 +107,73 @@ void CalendarService::setSafeDefault() {
 bool CalendarService::refresh() {
   std::string json;
 
+  // Home refresh can happen before WifiSelectionActivity has loaded the store,
+  // and credentials can have changed since boot. Reload the persistent store
+  // immediately before using it.
+  WIFI_STORE.loadFromFile();
+
   // Calendar refresh is an explicit, user-triggered network session.
-  // X4 normally keeps WiFi off to save power. If WiFi is already connected,
-  // reuse that session and leave ownership with the caller/system. Otherwise
-  // bring up STA mode using the last saved CrossPoint WiFi credential, perform
-  // the fetch, then shut WiFi down again before returning.
+  // Reuse an already-connected WiFi session. Otherwise try the last successful
+  // saved network first, then every other saved credential until one connects.
   bool ownsWifiSession = false;
+  std::string connectedCredentialSsid;
 
   if (WiFi.status() != WL_CONNECTED) {
-    const std::string ssid = WIFI_STORE.getLastConnectedSsid();
-    if (!ssid.empty()) {
-      const auto credential = WIFI_STORE.findCredential(ssid);
-      if (credential) {
-        ownsWifiSession = true;
+    const std::string lastSsid = WIFI_STORE.getLastConnectedSsid();
+    const size_t credentialCount = WIFI_STORE.getCredentialCount();
 
+    if (!lastSsid.empty()) {
+      const auto lastCredential = WIFI_STORE.findCredential(lastSsid);
+      if (lastCredential) {
+        const auto& cred = *lastCredential;
+        ownsWifiSession = true;
         WiFi.persistent(false);
         WiFi.disconnect(false);
         WiFi.mode(WIFI_STA);
-        WiFi.begin(credential->ssid.c_str(), credential->password.c_str());
-
-        LOG_DBG("CAL", "WiFi enabled for calendar refresh: %s", credential->ssid.c_str());
+        WiFi.begin(cred.ssid.c_str(), cred.password.c_str());
+        LOG_DBG("CAL", "Trying saved WiFi: %s", cred.ssid.c_str());
 
         const unsigned long started = millis();
         while (WiFi.status() != WL_CONNECTED &&
                millis() - started < WIFI_CONNECT_TIMEOUT_MS) {
           delay(WIFI_POLL_INTERVAL_MS);
         }
-      } else {
-        LOG_DBG("CAL", "No saved credential for last WiFi SSID");
+
+        if (WiFi.status() == WL_CONNECTED) {
+          connectedCredentialSsid = cred.ssid;
+        }
       }
-    } else {
-      LOG_DBG("CAL", "No saved WiFi SSID for calendar refresh");
+    }
+
+    // If the last-connected entry is missing/stale, try every saved credential.
+    if (WiFi.status() != WL_CONNECTED) {
+      for (size_t i = 0; i < credentialCount; ++i) {
+        const auto credential = WIFI_STORE.getCredentialAt(i);
+        if (!credential) continue;
+        if (credential->ssid == lastSsid) continue;
+
+        ownsWifiSession = true;
+        WiFi.persistent(false);
+        WiFi.disconnect(false);
+        WiFi.mode(WIFI_STA);
+        WiFi.begin(credential->ssid.c_str(), credential->password.c_str());
+        LOG_DBG("CAL", "Trying saved WiFi: %s", credential->ssid.c_str());
+
+        const unsigned long started = millis();
+        while (WiFi.status() != WL_CONNECTED &&
+               millis() - started < WIFI_CONNECT_TIMEOUT_MS) {
+          delay(WIFI_POLL_INTERVAL_MS);
+        }
+
+        if (WiFi.status() == WL_CONNECTED) {
+          connectedCredentialSsid = credential->ssid;
+          break;
+        }
+      }
+    }
+
+    if (credentialCount == 0) {
+      LOG_DBG("CAL", "No saved WiFi credentials for calendar refresh");
     }
   }
 
@@ -170,6 +215,11 @@ bool CalendarService::refresh() {
 
   current = std::move(parsed);
   LOG_INF("CAL", "Calendar refreshed: %s", current.date.c_str());
+
+  if (!connectedCredentialSsid.empty() &&
+      connectedCredentialSsid != WIFI_STORE.getLastConnectedSsid()) {
+    WIFI_STORE.setLastConnectedSsid(connectedCredentialSsid);
+  }
 
   if (ownsWifiSession) {
     WiFi.disconnect(true);
