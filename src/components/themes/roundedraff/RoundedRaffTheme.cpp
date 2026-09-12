@@ -395,7 +395,7 @@ void drawOwner(GfxRenderer& r, int x, int y, int width,
   // Owner is deliberately quiet: one size smaller than UI_10,
   // regular text, not bold.
   constexpr int ownerFont = SMALL_FONT_ID;
-  constexpr int ownerLineGap = 16;
+  constexpr int ownerLineGap = 18;
 
   const std::string name =
       r.truncatedText(ownerFont, kName, width, EpdFontFamily::REGULAR);
