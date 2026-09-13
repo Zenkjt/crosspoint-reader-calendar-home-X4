@@ -395,7 +395,7 @@ void drawOwner(GfxRenderer& r, int x, int y, int width,
   // Owner is deliberately quiet: one size smaller than UI_10,
   // regular text, not bold.
   constexpr int ownerFont = SMALL_FONT_ID;
-  constexpr int ownerLineGap = 14;
+  constexpr int ownerLineGap = 11;
 
   const std::string name =
       r.truncatedText(ownerFont, kName, width, EpdFontFamily::REGULAR);
@@ -546,7 +546,7 @@ void drawBookCard(GfxRenderer& r, const HomeRenderContext& h) {
                  h.readingCurrentPage, h.readingTotalPages);
 
     r.drawLine(infoX, y + 270, infoX + infoW, y + 270, 1, true);
-    drawOwner(r, infoX, y + 294, infoW, h);
+    drawOwner(r, infoX, y + 292, infoW, h);
     return;
   }
   drawDemoCover(r, coverX, coverY, coverW, coverH);
@@ -555,7 +555,7 @@ void drawBookCard(GfxRenderer& r, const HomeRenderContext& h) {
                true, 62, 173, 278);
 
   r.drawLine(infoX, y + 270, infoX + infoW, y + 270, 1, true);
-  drawOwner(r, infoX, y + 294, infoW, h);
+  drawOwner(r, infoX, y + 292, infoW, h);
 }
 // RoundedRaff Home menu: six approved bitmap icons, icon-only.
 // These are deliberately independent of CrossPoint's stock icon assets.
