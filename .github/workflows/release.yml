@@ -1,14 +1,11 @@
-name: Compile Release
+name: Build X4 Release
 
-# Builds every board's release firmware on tag push, with the .bin named
-# exactly as OtaUpdater requests it from the GitHub release: plain
-# firmware.bin for the C3 X4/X3 binary, firmware-<board>.bin for every other
-# board. Attach the artifacts' .bin files to the release as-is.
+# Publish a GitHub Release -> build the X4/X3 C3 release firmware -> attach firmware.bin.
+# The release tag is used as the exact source revision for the build.
 
 on:
-  push:
-    tags:
-      - '*'
+  release:
+    types: [published]
 
 permissions:
   contents: read
@@ -16,43 +13,28 @@ permissions:
 jobs:
   build-release:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - pio_env: gh_release
-            asset: firmware.bin
-          - pio_env: sticky-gh_release
-            asset: firmware-sticky.bin
-          - pio_env: x4pro-gh_release
-            asset: firmware-x4pro.bin
-          - pio_env: papermono-gh_release
-            asset: firmware-papermono.bin
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout release tag
+        uses: actions/checkout@v6
         with:
+          ref: ${{ github.event.release.tag_name }}
           submodules: recursive
 
-      - uses: actions/setup-python@v6
+      - name: Setup Python
+        uses: actions/setup-python@v6
         with:
           python-version: '3.13'
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
-          version: "latest"
+          version: latest
           enable-cache: false
 
       - name: Install PlatformIO Core
         run: |
           uv pip install --system -U https://github.com/pioarduino/platformio-core/archive/refs/tags/v6.1.19.zip
-          # platform-espressif32's builder/main.py imports these unconditionally; its own
-          # penv bootstrap (builder/penv_setup.py) is supposed to install them automatically
-          # but isn't picking them up reliably in this runner image, so pin them explicitly.
-          uv pip install --system -U "littlefs-python>=0.16.0" "fatfs-ng>=0.1.14" "pyyaml>=6.0.2" \
-            "rich-click>=1.8.6" "zopfli>=0.2.2" "intelhex>=2.3.0" "rich>=14.0.0" "urllib3<2" \
-            "cryptography>=45.0.3" "certifi>=2025.8.3" "ecdsa>=0.19.1" "bitstring>=4.3.1" \
-            "reedsolo>=1.5.3,<1.8" "esp-idf-size>=2.0.0" "esp-coredump>=1.14.0"
+          uv pip install --system -U "littlefs-python>=0.16.0" "fatfs-ng>=0.1.14" "pyyaml>=6.0.2"             "rich-click>=1.8.6" "zopfli>=0.2.2" "intelhex>=2.3.0" "rich>=14.0.0" "urllib3<2"             "cryptography>=45.0.3" "certifi>=2025.8.3" "ecdsa>=0.19.1" "bitstring>=4.3.1"             "reedsolo>=1.5.3,<1.8" "esp-idf-size>=2.0.0" "esp-coredump>=1.14.0"
 
       - name: Cache PlatformIO packages
         uses: actions/cache@v4
@@ -61,23 +43,14 @@ jobs:
           key: pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}
           restore-keys: pio-${{ runner.os }}-
 
-      - name: Build CrossPoint
-        run: pio run -e ${{ matrix.pio_env }} -j1
+      - name: Build X4/X3 release firmware
+        run: pio run -e gh_release -j1
 
-      - name: Name release asset
-        run: |
-          if [ "${{ matrix.asset }}" != "firmware.bin" ]; then
-            cp ".pio/build/${{ matrix.pio_env }}/firmware.bin" \
-              ".pio/build/${{ matrix.pio_env }}/${{ matrix.asset }}"
-          fi
+      - name: Prepare firmware.bin
+        run: cp .pio/build/gh_release/firmware.bin firmware.bin
 
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.asset }}
-          path: |
-            .pio/build/${{ matrix.pio_env }}/bootloader.bin
-            .pio/build/${{ matrix.pio_env }}/${{ matrix.asset }}
-            .pio/build/${{ matrix.pio_env }}/firmware.elf
-            .pio/build/${{ matrix.pio_env }}/firmware.map
-            .pio/build/${{ matrix.pio_env }}/partitions.bin
+      - name: Attach firmware.bin to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$RELEASE_TAG" firmware.bin --repo "$GITHUB_REPOSITORY" --clobber
