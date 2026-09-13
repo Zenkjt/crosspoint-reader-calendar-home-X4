@@ -412,19 +412,18 @@ void drawOwner(GfxRenderer& r, int x, int y, int width,
 }
 
 void drawDemoCover(GfxRenderer& r, int x, int y, int w, int h) {
-  r.fillRoundedRect(x, y, w, h, 14, Color::LightGray);
+  h = h * 80 / 100;
+  
+  r.fillRoundedRect(x, y, w, h, 14, Color::Gray);
   r.drawRoundedRect(x, y, w, h, 2, 14, true);
   // Every line is measured inside the cover width. Nothing is allowed to
   // escape into the information column.
-  drawCenteredInBox(r, kInfoFont, x + 8, w - 16, y + 30, "DOUGLAS", true);
-  drawCenteredInBox(r, kInfoFont, x + 8, w - 16, y + 50, "ADAMS", true);
+  drawCenteredInBox(r, kInfoFont, x + 8, w - 16, y + 30, "A BOOK", true);
+  drawCenteredInBox(r, kInfoFont, x + 8, w - 16, y + 50, "IS", true);
   r.drawLine(x + 16, y + 72, x + w - 16, y + 72, 1, true);
-  drawCenteredInBox(r, kInfoFont, x + 8, w - 16, y + 101, "THE", true);
-  drawCenteredInBox(r, kInfoFont, x + 8, w - 16, y + 121, "HITCHHIKER'S", true);
-  drawCenteredInBox(r, kInfoFont, x + 8, w - 16, y + 141, "GUIDE", true);
-
-  r.drawLine(x + 24, y + h - 58, x + w - 24, y + h - 58, 1, true);
-  drawCenteredInBox(r, kSmallFont, x + 8, w - 16, y + h - 42, "TO THE GALAXY");
+  drawCenteredInBox(r, kInfoFont, x + 8, w - 16, y + 101, "A DREAM", true);
+  drawCenteredInBox(r, kInfoFont, x + 8, w - 16, y + 121, "IN", true);
+  drawCenteredInBox(r, kInfoFont, x + 8, w - 16, y + 141, "YOUR HANDS", true);
 }
 void drawBookInfo(GfxRenderer& r, int infoX, int infoY, int infoW,
                   const char* title, const char* author,
