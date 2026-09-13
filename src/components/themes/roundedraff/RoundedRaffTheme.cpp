@@ -513,11 +513,11 @@ void drawBookCard(GfxRenderer& r, const HomeRenderContext& h) {
   const int tileX = 28;
   const int tileY = y + 50;
   const int tileW = 194;
-  const int tileH = 310;
+  const int tileH = 295;
   const int coverW = 155;
   const int coverH = 300;
   const int coverX = tileX + (tileW - coverW) / 2;
-  const int coverY = tileY + (tileH - coverH) / 2;
+  const int coverY = tileY + (tileH - coverH) / 2 + 20;
   r.fillRoundedRect(tileX, tileY, tileW, tileH, 14, Color::LightGray);
   const int infoX = 248;
   const int infoW = 192;
@@ -550,7 +550,7 @@ void drawBookCard(GfxRenderer& r, const HomeRenderContext& h) {
   }
   drawDemoCover(r, coverX, coverY, coverW, coverH);
   drawBookInfo(r, infoX, y + 58, infoW,
-               "The Hitchhiker's Guide to the Galaxy", "Douglas Adams",
+               "Đọc sách mắt như đèn muôn năm", "Cao Bá Quát",
                true, 62, 173, 278);
 
   r.drawLine(infoX, y + 270, infoX + infoW, y + 270, 1, true);
