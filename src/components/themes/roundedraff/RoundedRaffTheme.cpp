@@ -414,7 +414,7 @@ void drawOwner(GfxRenderer& r, int x, int y, int width,
 void drawDemoCover(GfxRenderer& r, int x, int y, int w, int h) {
   const int adjustedH = h * 80 / 100;
   
-  r.fillRoundedRect(x, y, w, adjustedH, 14, Color::LightGray);
+  r.fillRoundedRect(x, y, w, adjustedH, 14, Color::DarkGray);
   r.drawRoundedRect(x, y, w, adjustedH, 2, 14, true);
   // Every line is measured inside the cover width. Nothing is allowed to
   // escape into the information column.
